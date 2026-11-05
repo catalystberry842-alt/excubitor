@@ -4,20 +4,22 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 import threading
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any
 
 logger = logging.getLogger("excubitor.ledger")
 
 PLUGIN_NAME = "excubitor"
 
 _local = threading.local()
-_test_db_path: Optional[Path] = None
+_test_db_path: Path | None = None
 _schema_lock = threading.Lock()
 
 
@@ -32,6 +34,11 @@ def use_test_db(path: Path | str | None) -> None:
             pass
         try:
             del _local.conn
+        except Exception:
+            pass
+    if hasattr(_local, "db_id"):
+        try:
+            del _local.db_id
         except Exception:
             pass
 
@@ -57,11 +64,31 @@ def _open_conn() -> sqlite3.Connection:
         return conn
 
 
+def _db_identity() -> str:
+    """Stable id for the active DB so we reopen when HERMES_HOME / test path changes."""
+    if _test_db_path is not None:
+        return f"test:{_test_db_path}"
+    try:
+        from hermes_constants import get_hermes_home
+
+        return f"home:{get_hermes_home()}/plugin-data/{PLUGIN_NAME}/data.db"
+    except Exception:
+        return f"env:{os.environ.get('HERMES_HOME', '')}"
+
+
 def _conn() -> sqlite3.Connection:
+    identity = _db_identity()
     conn = getattr(_local, "conn", None)
-    if conn is None:
+    cached_id = getattr(_local, "db_id", None)
+    if conn is None or cached_id != identity:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
         conn = _open_conn()
         _local.conn = conn
+        _local.db_id = identity
         _ensure_schema(conn)
     return conn
 
@@ -138,7 +165,7 @@ def _tx() -> Iterator[sqlite3.Connection]:
 
 def utc_day(ts: float | None = None) -> str:
     t = ts if ts is not None else time.time()
-    return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d")
+    return datetime.fromtimestamp(t, tz=UTC).strftime("%Y-%m-%d")
 
 
 def bump_stat(key: str, delta: float = 1.0) -> None:
@@ -163,16 +190,20 @@ def get_stats() -> dict[str, float]:
 
 def already_seen(message_key: str) -> bool:
     try:
-        row = _conn().execute(
-            "SELECT 1 FROM seen_messages WHERE message_key = ?", (message_key,)
-        ).fetchone()
+        row = (
+            _conn()
+            .execute("SELECT 1 FROM seen_messages WHERE message_key = ?", (message_key,))
+            .fetchone()
+        )
         return row is not None
     except Exception as exc:
         logger.debug("excubitor: already_seen failed: %s", exc)
         return False  # fail-open: treat as new
 
 
-def mark_seen(message_key: str, *, platform: str = "", chat_id: str = "", message_id: str = "") -> bool:
+def mark_seen(
+    message_key: str, *, platform: str = "", chat_id: str = "", message_id: str = ""
+) -> bool:
     """Insert message_key. Returns True if newly inserted, False if duplicate/error."""
     try:
         with _tx() as conn:
@@ -181,7 +212,9 @@ def mark_seen(message_key: str, *, platform: str = "", chat_id: str = "", messag
                 "VALUES (?, ?, ?, ?, ?)",
                 (message_key, time.time(), platform, chat_id, message_id),
             )
-            return cur.rowcount > 0
+            ok = cur.rowcount > 0
+        maybe_prune()
+        return ok
     except Exception as exc:
         logger.debug("excubitor: mark_seen failed: %s", exc)
         return True  # fail-open: pretend new so we don't skip traffic
@@ -195,7 +228,7 @@ def open_turn(
     platform: str = "",
     chat_id: str = "",
     deadline_minutes: float = 5.0,
-    meta: Optional[dict[str, Any]] = None,
+    meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = time.time()
     deadline = now + max(0.1, float(deadline_minutes)) * 60.0
@@ -224,7 +257,7 @@ def open_turn(
         return {}
 
 
-def get_turn(turn_id: str) -> Optional[dict[str, Any]]:
+def get_turn(turn_id: str) -> dict[str, Any] | None:
     try:
         row = _conn().execute("SELECT * FROM turns WHERE turn_id = ?", (turn_id,)).fetchone()
         return dict(row) if row else None
@@ -232,15 +265,19 @@ def get_turn(turn_id: str) -> Optional[dict[str, Any]]:
         return None
 
 
-def find_open_turn_for_session(session_id: str) -> Optional[dict[str, Any]]:
+def find_open_turn_for_session(session_id: str) -> dict[str, Any] | None:
     if not session_id:
         return None
     try:
-        row = _conn().execute(
-            "SELECT * FROM turns WHERE session_id = ? AND status = 'open' "
-            "ORDER BY opened_at DESC LIMIT 1",
-            (session_id,),
-        ).fetchone()
+        row = (
+            _conn()
+            .execute(
+                "SELECT * FROM turns WHERE session_id = ? AND status = 'open' "
+                "ORDER BY opened_at DESC LIMIT 1",
+                (session_id,),
+            )
+            .fetchone()
+        )
         return dict(row) if row else None
     except Exception:
         return None
@@ -306,7 +343,9 @@ def add_cost(turn_id: str, amount: float, *, session_id: str = "") -> float:
                 "ON CONFLICT(key) DO UPDATE SET value = value + excluded.value",
                 (amount,),
             )
-            row = conn.execute("SELECT cost_usd FROM turns WHERE turn_id = ?", (turn_id,)).fetchone()
+            row = conn.execute(
+                "SELECT cost_usd FROM turns WHERE turn_id = ?", (turn_id,)
+            ).fetchone()
             return float(row["cost_usd"]) if row else amount
     except Exception as exc:
         logger.debug("excubitor: add_cost failed: %s", exc)
@@ -316,10 +355,14 @@ def add_cost(turn_id: str, amount: float, *, session_id: str = "") -> float:
 def spend_for(scope: str, scope_key: str, day: str | None = None) -> float:
     day = day or utc_day()
     try:
-        row = _conn().execute(
-            "SELECT cost_usd FROM spend WHERE scope = ? AND scope_key = ? AND day = ?",
-            (scope, scope_key, day),
-        ).fetchone()
+        row = (
+            _conn()
+            .execute(
+                "SELECT cost_usd FROM spend WHERE scope = ? AND scope_key = ? AND day = ?",
+                (scope, scope_key, day),
+            )
+            .fetchone()
+        )
         return float(row["cost_usd"]) if row else 0.0
     except Exception:
         return 0.0
@@ -333,7 +376,14 @@ def record_tool_pre(turn_id: str, tool: str, args_hash: str) -> int:
                 "INSERT INTO tool_calls(turn_id, ts, tool, args_hash, result_hash) VALUES (?, ?, ?, ?, NULL)",
                 (turn_id, time.time(), tool, args_hash),
             )
-            return int(cur.lastrowid or -1)
+            rid = int(cur.lastrowid or -1)
+        try:
+            from . import config as _config
+
+            cap_tool_rows(turn_id, int(_config.settings().get("max_tool_rows_per_turn") or 500))
+        except Exception:
+            pass
+        return rid
     except Exception as exc:
         logger.debug("excubitor: record_tool_pre failed: %s", exc)
         return -1
@@ -364,10 +414,14 @@ def record_tool_post(turn_id: str, tool: str, args_hash: str, result_hash: str) 
 
 def tool_history(turn_id: str, tool: str, args_hash: str) -> list[dict[str, Any]]:
     try:
-        rows = _conn().execute(
-            "SELECT * FROM tool_calls WHERE turn_id = ? AND tool = ? AND args_hash = ? ORDER BY id ASC",
-            (turn_id, tool, args_hash),
-        ).fetchall()
+        rows = (
+            _conn()
+            .execute(
+                "SELECT * FROM tool_calls WHERE turn_id = ? AND tool = ? AND args_hash = ? ORDER BY id ASC",
+                (turn_id, tool, args_hash),
+            )
+            .fetchall()
+        )
         return [dict(r) for r in rows]
     except Exception:
         return []
@@ -375,9 +429,11 @@ def tool_history(turn_id: str, tool: str, args_hash: str) -> list[dict[str, Any]
 
 def all_tool_calls(turn_id: str) -> list[dict[str, Any]]:
     try:
-        rows = _conn().execute(
-            "SELECT * FROM tool_calls WHERE turn_id = ? ORDER BY id ASC", (turn_id,)
-        ).fetchall()
+        rows = (
+            _conn()
+            .execute("SELECT * FROM tool_calls WHERE turn_id = ? ORDER BY id ASC", (turn_id,))
+            .fetchall()
+        )
         return [dict(r) for r in rows]
     except Exception:
         return []
@@ -391,7 +447,9 @@ def bump_loop(turn_id: str, *, blocked: bool = False) -> int:
                 "loop_blocked = loop_blocked + ? WHERE turn_id = ?",
                 (1 if blocked else 0, turn_id),
             )
-            row = conn.execute("SELECT loop_count FROM turns WHERE turn_id = ?", (turn_id,)).fetchone()
+            row = conn.execute(
+                "SELECT loop_count FROM turns WHERE turn_id = ?", (turn_id,)
+            ).fetchone()
             return int(row["loop_count"]) if row else 0
     except Exception:
         return 0
@@ -400,10 +458,14 @@ def bump_loop(turn_id: str, *, blocked: bool = False) -> int:
 def overdue_open_turns(now: float | None = None) -> list[dict[str, Any]]:
     now = now if now is not None else time.time()
     try:
-        rows = _conn().execute(
-            "SELECT * FROM turns WHERE status = 'open' AND deadline_at <= ? AND alerts_fired = 0",
-            (now,),
-        ).fetchall()
+        rows = (
+            _conn()
+            .execute(
+                "SELECT * FROM turns WHERE status = 'open' AND deadline_at <= ? AND alerts_fired = 0",
+                (now,),
+            )
+            .fetchall()
+        )
         return [dict(r) for r in rows]
     except Exception:
         return []
@@ -448,3 +510,79 @@ def summarize() -> dict[str, Any]:
         "open_turns": open_n,
         "day": day,
     }
+
+
+_ops_since_prune = 0
+
+
+def maybe_prune(cfg: dict | None = None) -> None:
+    """Periodic retention: drop stale seen_messages / closed turns. Fail-open."""
+    global _ops_since_prune
+    try:
+        from . import config as _config
+
+        cfg = cfg or _config.settings()
+        every = max(1, int(cfg.get("prune_every_n_ops") or 50))
+        _ops_since_prune += 1
+        if _ops_since_prune < every:
+            return
+        _ops_since_prune = 0
+        prune_old(
+            seen_ttl_hours=float(cfg.get("seen_ttl_hours") or 168.0),
+            turn_ttl_hours=float(cfg.get("turn_ttl_hours") or 72.0),
+        )
+    except Exception as exc:
+        logger.debug("excubitor: prune skipped: %s", exc)
+
+
+def prune_old(*, seen_ttl_hours: float = 168.0, turn_ttl_hours: float = 72.0) -> dict[str, int]:
+    """Delete aged rows. Never touches open turns newer than deadline window."""
+    now = time.time()
+    seen_cut = now - max(1.0, seen_ttl_hours) * 3600.0
+    turn_cut = now - max(1.0, turn_ttl_hours) * 3600.0
+    deleted = {"seen": 0, "turns": 0, "tool_calls": 0}
+    try:
+        with _tx() as conn:
+            cur = conn.execute("DELETE FROM seen_messages WHERE first_seen_at < ?", (seen_cut,))
+            deleted["seen"] = cur.rowcount or 0
+            # Closed turns only (replied/alerted/stopped)
+            old = conn.execute(
+                "SELECT turn_id FROM turns WHERE status != 'open' AND opened_at < ?",
+                (turn_cut,),
+            ).fetchall()
+            ids = [r["turn_id"] for r in old]
+            for tid in ids:
+                conn.execute("DELETE FROM tool_calls WHERE turn_id = ?", (tid,))
+                deleted["tool_calls"] += 1
+            if ids:
+                conn.execute(
+                    f"DELETE FROM turns WHERE turn_id IN ({','.join('?' * len(ids))})",
+                    ids,
+                )
+                deleted["turns"] = len(ids)
+        return deleted
+    except Exception as exc:
+        logger.debug("excubitor: prune_old failed: %s", exc)
+        return deleted
+
+
+def cap_tool_rows(turn_id: str, max_rows: int = 500) -> None:
+    """Keep only the newest N tool_calls for a turn (bounds DB under loop storms)."""
+    try:
+        max_rows = max(50, int(max_rows))
+        with _tx() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS c FROM tool_calls WHERE turn_id = ?", (turn_id,)
+            ).fetchone()
+            if not row or int(row["c"]) <= max_rows:
+                return
+            # Delete oldest overflow
+            overflow = int(row["c"]) - max_rows
+            conn.execute(
+                "DELETE FROM tool_calls WHERE id IN ("
+                "SELECT id FROM tool_calls WHERE turn_id = ? ORDER BY id ASC LIMIT ?"
+                ")",
+                (turn_id, overflow),
+            )
+    except Exception as exc:
+        logger.debug("excubitor: cap_tool_rows failed: %s", exc)

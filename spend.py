@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from . import config, ledger
 
@@ -13,17 +13,9 @@ logger = logging.getLogger("excubitor.spend")
 def _tokens_from_usage(usage: Any) -> tuple[int, int]:
     if not isinstance(usage, dict):
         return 0, 0
-    prompt = (
-        usage.get("prompt_tokens")
-        or usage.get("input_tokens")
-        or usage.get("prompt")
-        or 0
-    )
+    prompt = usage.get("prompt_tokens") or usage.get("input_tokens") or usage.get("prompt") or 0
     completion = (
-        usage.get("completion_tokens")
-        or usage.get("output_tokens")
-        or usage.get("completion")
-        or 0
+        usage.get("completion_tokens") or usage.get("output_tokens") or usage.get("completion") or 0
     )
     try:
         return int(prompt or 0), int(completion or 0)
@@ -59,7 +51,7 @@ def _cost_from_hook(
     )
 
 
-def over_cap(cfg: dict[str, Any], *, session_id: str = "") -> Optional[str]:
+def over_cap(cfg: dict[str, Any], *, session_id: str = "") -> str | None:
     day = ledger.utc_day()
     day_spend = ledger.spend_for("day", day, day)
     day_cap = float(cfg.get("day_budget_usd") or 5.0)
@@ -85,7 +77,9 @@ def on_post_api_request(
         cfg = config.settings()
         if not cfg.get("enabled", True):
             return None
-        tid = ledger.resolve_turn_id(session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or "")
+        tid = ledger.resolve_turn_id(
+            session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or ""
+        )
         if not ledger.get_turn(tid):
             ledger.open_turn(
                 tid,
@@ -108,7 +102,9 @@ def on_post_llm_call(session_id="", turn_id="", task_id="", **kwargs):
         cfg = config.settings()
         if not cfg.get("enabled", True):
             return None
-        tid = ledger.resolve_turn_id(session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or "")
+        tid = ledger.resolve_turn_id(
+            session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or ""
+        )
         if ledger.get_turn(tid):
             ledger.mark_reply(tid, status="replied")
         return None
@@ -117,13 +113,17 @@ def on_post_llm_call(session_id="", turn_id="", task_id="", **kwargs):
         return None
 
 
-def on_pre_llm_call(session_id="", turn_id="", task_id="", user_message=None, platform="", **kwargs):
+def on_pre_llm_call(
+    session_id="", turn_id="", task_id="", user_message=None, platform="", **kwargs
+):
     """Open a ledger entry if needed (CLI path) and veto the turn when over budget."""
     try:
         cfg = config.settings()
         if not cfg.get("enabled", True):
             return None
-        tid = ledger.resolve_turn_id(session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or "")
+        tid = ledger.resolve_turn_id(
+            session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or ""
+        )
         turn = ledger.get_turn(tid)
         if not turn:
             ledger.open_turn(
@@ -155,7 +155,9 @@ def on_pre_llm_call(session_id="", turn_id="", task_id="", user_message=None, pl
         return None
 
 
-def on_pre_tool_call_spend(tool_name=None, args=None, task_id="", session_id="", turn_id="", **kwargs):
+def on_pre_tool_call_spend(
+    tool_name=None, args=None, task_id="", session_id="", turn_id="", **kwargs
+):
     """Mid-turn spend veto (separate from loop detection)."""
     try:
         cfg = config.settings()
@@ -164,7 +166,9 @@ def on_pre_tool_call_spend(tool_name=None, args=None, task_id="", session_id="",
         reason = over_cap(cfg, session_id=session_id or "")
         if not reason:
             return None
-        tid = ledger.resolve_turn_id(session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or "")
+        tid = ledger.resolve_turn_id(
+            session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or ""
+        )
         ledger.bump_stat("cap_vetoes")
         ledger.set_turn_reason(tid, reason)
         return {"action": "block", "message": reason + f" (blocked tool {tool_name})"}

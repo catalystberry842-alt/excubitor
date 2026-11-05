@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, MutableMapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 DEFAULTS: dict[str, Any] = {
     "day_budget_usd": 5.0,
@@ -16,6 +17,10 @@ DEFAULTS: dict[str, Any] = {
     "price_table": {},
     "watch_interval_seconds": 30.0,
     "enabled": True,
+    "seen_ttl_hours": 168.0,  # 7 days
+    "turn_ttl_hours": 72.0,  # 3 days
+    "max_tool_rows_per_turn": 500,
+    "prune_every_n_ops": 50,
 }
 
 # Conservative USD per million tokens for common models when hooks give tokens but no $ figure.
@@ -33,7 +38,7 @@ BUILTIN_PRICES: dict[str, dict[str, float]] = {
     "gemini-2.5-flash": {"input_per_mTok": 0.3, "output_per_mTok": 2.5},
 }
 
-_ctx_settings: Optional[MutableMapping[str, Any]] = None
+_ctx_settings: Any = None
 
 
 def bind_ctx(ctx: Any) -> None:
@@ -69,6 +74,10 @@ def settings() -> dict[str, Any]:
         out["reply_deadline_minutes"] = float(out["reply_deadline_minutes"])
         out["loop_threshold"] = max(2, int(out["loop_threshold"]))
         out["watch_interval_seconds"] = max(5.0, float(out["watch_interval_seconds"]))
+        out["seen_ttl_hours"] = max(1.0, float(out.get("seen_ttl_hours") or 168.0))
+        out["turn_ttl_hours"] = max(1.0, float(out.get("turn_ttl_hours") or 72.0))
+        out["max_tool_rows_per_turn"] = max(50, int(out.get("max_tool_rows_per_turn") or 500))
+        out["prune_every_n_ops"] = max(1, int(out.get("prune_every_n_ops") or 50))
         out["loop_approve_first"] = bool(out["loop_approve_first"])
         out["enabled"] = bool(out["enabled"])
         notifier = str(out.get("notifier") or "log").strip().lower()
@@ -89,8 +98,12 @@ def price_for(model: str | None, overrides: Mapping[str, Any] | None = None) -> 
         for k, v in overrides.items():
             if isinstance(v, Mapping):
                 table[str(k)] = {
-                    "input_per_mTok": float(v.get("input_per_mTok", table["default"]["input_per_mTok"])),
-                    "output_per_mTok": float(v.get("output_per_mTok", table["default"]["output_per_mTok"])),
+                    "input_per_mTok": float(
+                        v.get("input_per_mTok", table["default"]["input_per_mTok"])
+                    ),
+                    "output_per_mTok": float(
+                        v.get("output_per_mTok", table["default"]["output_per_mTok"])
+                    ),
                 }
     if not model:
         return dict(table["default"])
@@ -118,8 +131,8 @@ def estimate_cost_usd(
         prices = price_for(model, overrides)
         inp = max(0, int(prompt_tokens or 0))
         out = max(0, int(completion_tokens or 0))
-        return (inp / 1_000_000.0) * float(prices["input_per_mTok"]) + (
-            out / 1_000_000.0
-        ) * float(prices["output_per_mTok"])
+        return (inp / 1_000_000.0) * float(prices["input_per_mTok"]) + (out / 1_000_000.0) * float(
+            prices["output_per_mTok"]
+        )
     except Exception:
         return 0.0

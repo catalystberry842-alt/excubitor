@@ -33,10 +33,14 @@ def test_evaluate_loop_with_corrupt_history(modules, monkeypatch):
     ledger = modules["ledger"]
     cfg = modules["config"]
     monkeypatch.setattr(cfg, "settings", lambda: {**cfg.DEFAULTS, "enabled": True})
-    monkeypatch.setattr(ledger, "tool_history", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db")))
+    monkeypatch.setattr(
+        ledger, "tool_history", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db"))
+    )
     # Should not raise — evaluate_loop itself doesn't catch, but register path uses _safe.
     # Direct call: we still want ledger.record_tool_pre to fail open.
-    monkeypatch.setattr(ledger, "record_tool_pre", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db")))
+    monkeypatch.setattr(
+        ledger, "record_tool_pre", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db"))
+    )
     with pytest.raises(RuntimeError):
         # evaluate_loop is not itself fail-open; the registered wrapper is.
         work.evaluate_loop("t", "x", {}, cfg=cfg.settings())

@@ -1,0 +1,23 @@
+┌─────────────────────────────────────────────────────────┐
+│           ☤ Hermes Gateway Starting...                 │
+├─────────────────────────────────────────────────────────┤
+│  Messaging platforms + cron scheduler                    │
+│  Press Ctrl+C to stop                                   │
+└─────────────────────────────────────────────────────────┘
+
+2026-11-05 19:37:50,213 WARNING gateway.run: No env user allowlists configured. Messaging platforms default to pairing/allowlist policies and will deny unknown senders unless you configure platform allowlists (e.g., TELEGRAM_ALLOWED_USERS=your_id) or explicitly opt in with GATEWAY_ALLOW_ALL_USERS=true plus dm_policy/group_policy: open on the platform.
+2026-11-05 19:37:50,291 WARNING gateway.run: Webhook: aiohttp not installed
+2026-11-05 19:37:50,291 WARNING gateway.run: No adapter available for webhook
+Preparing the isolated Hermes runtime…
+  → Installing Python dependencies…
+  ✓ Installing Python dependencies
+  → Resolving Python dependencies…
+  ✓ Resolving Python dependencies
+  → Installing Python dependencies…
+  ✓ Installing Python dependencies
+2026-11-05 19:38:06,320 WARNING gateway.platform_registry: Platform 'Telegram' requirements not met (Run `hermes setup` to install Telegram support.)
+2026-11-05 19:38:06,321 ERROR gateway.run: Platform 'telegram' is registered but adapter creation failed (check dependencies and config)
+2026-11-05 19:38:06,322 WARNING gateway.run: No adapter available for telegram
+2026-11-05 19:38:06,330 WARNING gateway.run: No adapter could be created for any of the 2 configured platform(s). Check that required dependencies are installed and credentials are set. Gateway will continue for cron job execution; platforms whose plugin may still register are queued for background retry.
+2026-11-05 19:38:07,431 WARNING agent.credential_pool: Ingested OPENROUTER_API_KEY from environment into the openrouter credential pool — this enables OpenRouter spend. Remove the key or run hermes auth remove openrouter <n> to suppress.
+2026-11-05 19:38:33,118 WARNING gateway.run: Shutdown context: signal=SIGTERM under_systemd=no parent_pid=99355 parent_name=python loadavg_1m=0.56

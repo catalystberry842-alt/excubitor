@@ -1,0 +1,29 @@
+{
+  "stamp": "live-final",
+  "summary": {
+    "a": true,
+    "b": true,
+    "c": true,
+    "d": true,
+    "e": true,
+    "f": true
+  },
+  "all_pass": true,
+  "evidence_files": {
+    "a": "20261105T184233Z_a_webhook_dup.json",
+    "b": "20261105T184233Z_b_loop.json",
+    "c": "20261105T184233Z_c_cap.json",
+    "d": "20261105T184336Z_d_hang.json",
+    "e": "20261105T184233Z_e_status.json",
+    "f": "20261105T184336Z_f_failopen.json"
+  },
+  "notes": {
+    "a": "Real hermes gateway webhook; same delivery \u2192 duplicate in-process; after restart Hermes still returned duplicate AND plugin_db seen_messages had the delivery key.",
+    "b": "Real AIAgent + openrouter gpt-4o-mini; pre_tool_call blocked no-progress terminal loops mid-turn.",
+    "c": "Tiny day_budget; pre_llm_call veto with clear budget message; turn ended blocked_by_plugin_pre_llm_call.",
+    "d": "Open overdue turn; Watcher alerted once; first run delivered ntfy (see 184233Z_d_hang + ntfy_poll_verify); retest hit ntfy 429 but ledger alerts_fired=1.",
+    "e": "/excubitor status_text rendered ledger summary.",
+    "f": "Injected ledger.already_seen RuntimeError; intake returned None; Hermes continued.",
+    "g": "Covered by A restart + durable seen_messages row."
+  }
+}

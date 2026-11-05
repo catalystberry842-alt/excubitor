@@ -1,0 +1,18 @@
+┌─────────────────────────────────────────────────────────┐
+│           ☤ Hermes Gateway Starting...                 │
+├─────────────────────────────────────────────────────────┤
+│  Messaging platforms + cron scheduler                    │
+│  Press Ctrl+C to stop                                   │
+└─────────────────────────────────────────────────────────┘
+
+2026-11-05 19:42:56,764 WARNING gateway.run: No env user allowlists configured. Messaging platforms default to pairing/allowlist policies and will deny unknown senders unless you configure platform allowlists (e.g., TELEGRAM_ALLOWED_USERS=your_id) or explicitly opt in with GATEWAY_ALLOW_ALL_USERS=true plus dm_policy/group_policy: open on the platform.
+2026-11-05 19:42:56,815 WARNING gateway.session: gateway.session: pruning stale sessions.json entry 'agent:main:webhook:webhook:webhook:v2:WyJkZWZhdWx0IiwiZXhjdWJpdG9yLXByb2JlIiwiZXhjdWJpdG9yLWR1cC0xNzkzOTA0MTcxIl0:webhook:excubitor-probe' -> 20261105_194251_9c2d3c0f (end_reason='webhook_complete'); left by a crashed gateway
+  → Resolving Python dependencies…
+  ✓ Resolving Python dependencies
+  → Installing Python dependencies…
+  ✓ Installing Python dependencies
+2026-11-05 19:43:00,367 WARNING gateway.platform_registry: Platform 'Telegram' requirements not met (Run `hermes setup` to install Telegram support.)
+2026-11-05 19:43:00,368 ERROR gateway.run: Platform 'telegram' is registered but adapter creation failed (check dependencies and config)
+2026-11-05 19:43:00,368 WARNING gateway.run: No adapter available for telegram
+2026-11-05 19:43:01,236 WARNING gateway.run: Shutdown context: signal=SIGTERM under_systemd=no parent_pid=103659 parent_name=python loadavg_1m=1.34
+2026-11-05 19:43:01,578 WARNING hermes_state: state.db connection for /tmp/excubitor-livehome-wshvg_8x/state.db was closed while a read was still in flight — reopening (teardown/worker race, #94736)

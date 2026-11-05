@@ -1,0 +1,23 @@
+┌─────────────────────────────────────────────────────────┐
+│           ☤ Hermes Gateway Starting...                 │
+├─────────────────────────────────────────────────────────┤
+│  Messaging platforms + cron scheduler                    │
+│  Press Ctrl+C to stop                                   │
+└─────────────────────────────────────────────────────────┘
+
+2026-11-05 19:42:35,484 WARNING gateway.run: No env user allowlists configured. Messaging platforms default to pairing/allowlist policies and will deny unknown senders unless you configure platform allowlists (e.g., TELEGRAM_ALLOWED_USERS=your_id) or explicitly opt in with GATEWAY_ALLOW_ALL_USERS=true plus dm_policy/group_policy: open on the platform.
+Preparing the isolated Hermes runtime…
+  → Installing Python dependencies…
+  ✓ Installing Python dependencies
+  → Resolving Python dependencies…
+  ✓ Resolving Python dependencies
+  → Installing Python dependencies…
+  ✓ Installing Python dependencies
+2026-11-05 19:42:51,376 WARNING gateway.platform_registry: Platform 'Telegram' requirements not met (Run `hermes setup` to install Telegram support.)
+2026-11-05 19:42:51,376 ERROR gateway.run: Platform 'telegram' is registered but adapter creation failed (check dependencies and config)
+2026-11-05 19:42:51,376 WARNING gateway.run: No adapter available for telegram
+2026-11-05 19:42:52,078 WARNING agent.credential_pool: Ingested OPENROUTER_API_KEY from environment into the openrouter credential pool — this enables OpenRouter spend. Remove the key or run hermes auth remove openrouter <n> to suppress.
+2026-11-05 19:42:52,974 WARNING gateway.run: Shutdown context: signal=SIGTERM under_systemd=no parent_pid=103659 parent_name=python loadavg_1m=0.74
+2026-11-05 19:42:53,072 WARNING gateway.run: Gateway drain timed out after 0.0s with 1 active agent(s), 0 in-flight cron job(s), 0 api_server run(s), and 0 deferred agent worker(s); interrupting remaining work.
+2026-11-05 19:42:53,090 WARNING agent.auxiliary_client: Auxiliary client: PAID lane engaged for auxiliary task — OpenRouter fallback model 'openai/gpt-4o-mini' is not a :free SKU and may incur real spend. Set auxiliary.free_only: true to restrict auxiliary fallbacks to free models, or auxiliary.openrouter_model to a :free model.
+2026-11-05 19:42:53,639 WARNING gateway.session_authority: Session 20261105_194251_9c2d3c0f paused: runtime_draining

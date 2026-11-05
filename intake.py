@@ -45,7 +45,9 @@ def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwar
             ledger.bump_stat("duplicates_dropped")
             logger.info("excubitor: skipping duplicate inbound %s", key)
             return {"action": "skip", "reason": f"excubitor: duplicate message {key}"}
-        inserted = ledger.mark_seen(key, platform=platform, chat_id=chat_id, message_id=message_id or "")
+        inserted = ledger.mark_seen(
+            key, platform=platform, chat_id=chat_id, message_id=message_id or ""
+        )
         if not inserted:
             ledger.bump_stat("duplicates_dropped")
             return {"action": "skip", "reason": f"excubitor: duplicate message {key}"}
@@ -60,7 +62,7 @@ def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwar
         )
         # Stash turn id on the event when possible so later hooks can find it.
         try:
-            setattr(event, "_excubitor_turn_id", turn_id)
+            event._excubitor_turn_id = turn_id
         except Exception:
             pass
         return None

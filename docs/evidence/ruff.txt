@@ -1,0 +1,416 @@
+[1m[91mUP035[0m [[1m[96m*[0m][1m Import from `collections.abc` instead: `Mapping`, `MutableMapping`[0m
+ [1m[94m--> [0mconfig.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m from __future__ import annotations
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from typing import Any, Mapping, MutableMapping, Optional
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m DEFAULTS: dict[str, Any] = {
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Import from `collections.abc`[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m [31mfrom typing import Any, [0m[31mMapping, [0m[1m[31mMutableMapping, Optional[0m[0m[31m
+[0m[1m[94m5[0m [1m[32m+[0m [32mfrom typing import Any, [0m[1m[32mOptional[0m[0m[32m
+[0m[1m[94m6[0m [1m[32m+[0m [1m[32mfrom collections.abc import [0m[0m[32mMapping, [0m[1m[32mMutableMapping[0m[0m[32m
+[0m[1m[94m7[0m [1m[94m|[0m
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `typing.MutableMapping` imported but unused[0m
+ [1m[94m--> [0mconfig.py:5:34
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m from __future__ import annotations
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from typing import Any, Mapping, MutableMapping, Optional
+  [1m[94m|[0m                                  [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m DEFAULTS: dict[str, Any] = {
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m [31mfrom typing import Any, [0m[1m[31mMapping, MutableMapping, Optional[0m[0m[31m
+[0m[1m[94m5[0m [1m[32m+[0m [32mfrom typing import Any, [0m[1m[32mMapping[0m[0m[32m
+[0m[1m[94m6[0m [1m[94m|[0m
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `typing.Optional` imported but unused[0m
+ [1m[94m--> [0mconfig.py:5:50
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m from __future__ import annotations
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from typing import Any, Mapping, MutableMapping, Optional
+  [1m[94m|[0m                                                  [1m[91m^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m DEFAULTS: dict[str, Any] = {
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m [31mfrom typing import Any, [0m[1m[31mMapping, MutableMapping, Optional[0m[0m[31m
+[0m[1m[94m5[0m [1m[32m+[0m [32mfrom typing import Any, [0m[1m[32mMapping[0m[0m[32m
+[0m[1m[94m6[0m [1m[94m|[0m
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+ [1m[94m--> [0mhashing.py:3:1
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m   """Stable hashing helpers for message keys, tool args, and results."""
+[1m[94m2[0m [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m5[0m [1m[94m|[0m [1m[91m|[0m import hashlib
+[1m[94m6[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m7[0m [1m[94m|[0m [1m[91m|[0m import re
+[1m[94m8[0m [1m[94m|[0m [1m[91m|[0m from typing import Any
+  [1m[94m|[0m [1m[91m|______________________^[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m9 [0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m[31m
+[0m[1m[94m10[0m [1m[94m|[0m _WS = re.compile(r"\s+")
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mB010[0m [[1m[96m*[0m][1m Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.[0m
+  [1m[94m--> [0mintake.py:63:13
+   [1m[94m|[0m
+[1m[94m61[0m [1m[94m|[0m         # Stash turn id on the event when possible so later hooks can find it.
+[1m[94m62[0m [1m[94m|[0m         try:
+[1m[94m63[0m [1m[94m|[0m             setattr(event, "_excubitor_turn_id", turn_id)
+   [1m[94m|[0m             [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m64[0m [1m[94m|[0m         except Exception:
+[1m[94m65[0m [1m[94m|[0m             pass
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Replace `setattr` with assignment[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m62[0m [1m[94m|[0m         try:
+[1m[94m  [0m [1m[31m-[0m [31m            [0m[1m[31msetattr(event,[0m[0m[31m [0m[1m[31m"_excubitor_turn_id",[0m[0m[31m [0m[1m[31mturn_id)[0m[0m[31m
+[0m[1m[94m63[0m [1m[32m+[0m [32m            [0m[1m[32mevent._excubitor_turn_id[0m[0m[32m [0m[1m[32m=[0m[0m[32m [0m[1m[32mturn_id[0m[0m[32m
+[0m[1m[94m64[0m [1m[94m|[0m         except Exception:
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mledger.py:3:1
+   [1m[94m|[0m
+[1m[94m 1[0m [1m[94m|[0m   """Per-turn ledger persisted via plugin_db (SQLite). Fail-open on every write."""
+[1m[94m 2[0m [1m[94m|[0m
+[1m[94m 3[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 4[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 5[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m 6[0m [1m[94m|[0m [1m[91m|[0m import os
+[1m[94m 7[0m [1m[94m|[0m [1m[91m|[0m import logging
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m import sqlite3
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m import threading
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m import time
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m from contextlib import contextmanager
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m from datetime import datetime, timezone
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from typing import Any, Iterator, Optional
+   [1m[94m|[0m [1m[91m|__________________________________________^[0m
+[1m[94m15[0m [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m   logger = logging.getLogger("excubitor.ledger")
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m import json
+[1m[94m6[0m [1m[32m+[0m [32mimport logging
+[0m[1m[94m7[0m [1m[94m|[0m import os
+[1m[94m [0m [1m[31m-[0m [31mimport logging
+[0m[1m[94m8[0m [1m[94m|[0m import sqlite3
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mUP035[0m [[1m[96m*[0m][1m Import from `collections.abc` instead: `Iterator`[0m
+  [1m[94m--> [0mledger.py:14:1
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m from datetime import datetime, timezone
+[1m[94m13[0m [1m[94m|[0m from pathlib import Path
+[1m[94m14[0m [1m[94m|[0m from typing import Any, Iterator, Optional
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m15[0m [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m logger = logging.getLogger("excubitor.ledger")
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Import from `collections.abc`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m from pathlib import Path
+[1m[94m  [0m [1m[31m-[0m [31mfrom typing import Any, [0m[1m[31mIterator, [0m[0m[31mOptional
+[0m[1m[94m14[0m [1m[32m+[0m [32mfrom typing import Any, [0m[32mOptional
+[0m[1m[94m15[0m [1m[32m+[0m [1m[32mfrom collections.abc import Iterator[0m[0m[32m
+[0m[1m[94m16[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+  [1m[94m--> [0mledger.py:21:16
+   [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m _local = threading.local()
+[1m[94m21[0m [1m[94m|[0m _test_db_path: Optional[Path] = None
+   [1m[94m|[0m                [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m22[0m [1m[94m|[0m _schema_lock = threading.Lock()
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m _local = threading.local()
+[1m[94m  [0m [1m[31m-[0m [31m_test_db_path: [0m[1m[31mOptional[Path][0m[0m[31m = None
+[0m[1m[94m21[0m [1m[32m+[0m [32m_test_db_path: [0m[1m[32mPath | None[0m[0m[32m = None
+[0m[1m[94m22[0m [1m[94m|[0m _schema_lock = threading.Lock()
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP017[0m [[1m[96m*[0m][1m Use `datetime.UTC` alias[0m
+   [1m[94m--> [0mledger.py:167:41
+    [1m[94m|[0m
+[1m[94m165[0m [1m[94m|[0m def utc_day(ts: float | None = None) -> str:
+[1m[94m166[0m [1m[94m|[0m     t = ts if ts is not None else time.time()
+[1m[94m167[0m [1m[94m|[0m     return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d")
+    [1m[94m|[0m                                         [1m[91m^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Convert to `datetime.UTC` alias[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m11 [0m [1m[94m|[0m from contextlib import contextmanager
+[1m[94m   [0m [1m[31m-[0m [31mfrom datetime import datetime, [0m[1m[31mtimezone[0m[0m[31m
+[0m[1m[94m12 [0m [1m[32m+[0m [32mfrom datetime import datetime, [0m[1m[32mtimezone, UTC[0m[0m[32m
+[0m[1m[94m13 [0m [1m[94m|[0m from pathlib import Path
+--------------------------------------------------------------------------------
+[1m[94m166[0m [1m[94m|[0m     t = ts if ts is not None else time.time()
+[1m[94m   [0m [1m[31m-[0m [31m    return datetime.fromtimestamp(t, [0m[1m[31mtz=timezone.utc).strftime("%Y-%m-%d")[0m[0m[31m
+[0m[1m[94m167[0m [1m[32m+[0m [32m    return datetime.fromtimestamp(t, [0m[1m[32mtz=UTC).strftime("%Y-%m-%d")[0m[0m[32m
+[0m[1m[94m168[0m [1m[94m|[0m
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+   [1m[94m--> [0mledger.py:226:11
+    [1m[94m|[0m
+[1m[94m224[0m [1m[94m|[0m     chat_id: str = "",
+[1m[94m225[0m [1m[94m|[0m     deadline_minutes: float = 5.0,
+[1m[94m226[0m [1m[94m|[0m     meta: Optional[dict[str, Any]] = None,
+    [1m[94m|[0m           [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m227[0m [1m[94m|[0m ) -> dict[str, Any]:
+[1m[94m228[0m [1m[94m|[0m     now = time.time()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m225[0m [1m[94m|[0m     deadline_minutes: float = 5.0,
+[1m[94m   [0m [1m[31m-[0m [31m    meta: [0m[1m[31mOptional[dict[str,[0m[0m[31m [0m[1m[31mAny]][0m[0m[31m = None,
+[0m[1m[94m226[0m [1m[32m+[0m [32m    meta: [0m[1m[32mdict[str, Any] |[0m[0m[32m [0m[1m[32mNone[0m[0m[32m = None,
+[0m[1m[94m227[0m [1m[94m|[0m ) -> dict[str, Any]:
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+   [1m[94m--> [0mledger.py:255:31
+    [1m[94m|[0m
+[1m[94m255[0m [1m[94m|[0m def get_turn(turn_id: str) -> Optional[dict[str, Any]]:
+    [1m[94m|[0m                               [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m256[0m [1m[94m|[0m     try:
+[1m[94m257[0m [1m[94m|[0m         row = _conn().execute("SELECT * FROM turns WHERE turn_id = ?", (turn_id,)).fetchone()
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m254[0m [1m[94m|[0m
+[1m[94m   [0m [1m[31m-[0m [31mdef get_turn(turn_id: str) -> [0m[1m[31mOptional[dict[str,[0m[0m[31m [0m[1m[31mAny]]:[0m[0m[31m
+[0m[1m[94m255[0m [1m[32m+[0m [32mdef get_turn(turn_id: str) -> [0m[1m[32mdict[str, Any] |[0m[0m[32m [0m[1m[32mNone:[0m[0m[32m
+[0m[1m[94m256[0m [1m[94m|[0m     try:
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+   [1m[94m--> [0mledger.py:263:52
+    [1m[94m|[0m
+[1m[94m263[0m [1m[94m|[0m def find_open_turn_for_session(session_id: str) -> Optional[dict[str, Any]]:
+    [1m[94m|[0m                                                    [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m264[0m [1m[94m|[0m     if not session_id:
+[1m[94m265[0m [1m[94m|[0m         return None
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m   [0m [1m[94m|[0m
+[1m[94m262[0m [1m[94m|[0m
+[1m[94m   [0m [1m[31m-[0m [31mdef find_open_turn_for_session(session_id: str) -> [0m[1m[31mOptional[dict[str,[0m[0m[31m [0m[1m[31mAny]]:[0m[0m[31m
+[0m[1m[94m263[0m [1m[32m+[0m [32mdef find_open_turn_for_session(session_id: str) -> [0m[1m[32mdict[str, Any] |[0m[0m[32m [0m[1m[32mNone:[0m[0m[32m
+[0m[1m[94m264[0m [1m[94m|[0m     if not session_id:
+[1m[94m   [0m [1m[94m|[0m
+
+[1m[91mUP035[0m [[1m[96m*[0m][1m Import from `collections.abc` instead: `Mapping`[0m
+  [1m[94m--> [0mnotify.py:10:1
+   [1m[94m|[0m
+[1m[94m 8[0m [1m[94m|[0m import urllib.error
+[1m[94m 9[0m [1m[94m|[0m import urllib.request
+[1m[94m10[0m [1m[94m|[0m from typing import Any, Mapping
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m from urllib.parse import urlparse
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Import from `collections.abc`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m9 [0m [1m[94m|[0m import urllib.request
+[1m[94m  [0m [1m[31m-[0m [31mfrom typing import [0m[1m[31mAny,[0m[0m[31m Mapping
+[0m[1m[94m10[0m [1m[32m+[0m [32mfrom typing import [0m[1m[32mAny[0m[0m[32m
+[0m[1m[94m11[0m [1m[32m+[0m [1m[32mfrom collections.abc import[0m[0m[32m Mapping
+[0m[1m[94m12[0m [1m[94m|[0m from urllib.parse import urlparse
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+  [1m[94m--> [0mspend.py:62:63
+   [1m[94m|[0m
+[1m[94m62[0m [1m[94m|[0m def over_cap(cfg: dict[str, Any], *, session_id: str = "") -> Optional[str]:
+   [1m[94m|[0m                                                               [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m63[0m [1m[94m|[0m     day = ledger.utc_day()
+[1m[94m64[0m [1m[94m|[0m     day_spend = ledger.spend_for("day", day, day)
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m61[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m [31mdef over_cap(cfg: dict[str, Any], *, session_id: str = "") -> [0m[1m[31mOptional[str]:[0m[0m[31m
+[0m[1m[94m62[0m [1m[32m+[0m [32mdef over_cap(cfg: dict[str, Any], *, session_id: str = "") -> [0m[1m[32mstr | None:[0m[0m[32m
+[0m[1m[94m63[0m [1m[94m|[0m     day = ledger.utc_day()
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `tempfile` imported but unused[0m
+ [1m[94m--> [0mtests/conftest.py:8:8
+  [1m[94m|[0m
+[1m[94m6[0m [1m[94m|[0m import importlib.util
+[1m[94m7[0m [1m[94m|[0m import sys
+[1m[94m8[0m [1m[94m|[0m import tempfile
+  [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m from pathlib import Path
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `tempfile`[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m import sys
+[1m[94m [0m [1m[31m-[0m [31mimport tempfile
+[0m[1m[94m8[0m [1m[94m|[0m from pathlib import Path
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `tempfile` imported but unused[0m
+  [1m[94m--> [0mtests/test_hermes_live.py:12:8
+   [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m import os
+[1m[94m11[0m [1m[94m|[0m import sys
+[1m[94m12[0m [1m[94m|[0m import tempfile
+   [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m13[0m [1m[94m|[0m from pathlib import Path
+[1m[94m14[0m [1m[94m|[0m from types import SimpleNamespace
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `tempfile`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m import sys
+[1m[94m  [0m [1m[31m-[0m [31mimport tempfile
+[0m[1m[94m12[0m [1m[94m|[0m from pathlib import Path
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `unittest.mock.MagicMock` imported but unused[0m
+ [1m[94m--> [0mtests/test_notify_security.py:3:27
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m """Notifier sanitization, URL/topic validation, secret redaction."""
+[1m[94m2[0m [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m from unittest.mock import MagicMock
+  [1m[94m|[0m                           [1m[91m^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Remove unused import: `unittest.mock.MagicMock`[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m2[0m [1m[94m|[0m
+[1m[94m [0m [1m[31m-[0m [31mfrom unittest.mock import MagicMock
+[0m[1m[94m3[0m [1m[94m|[0m
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+  [1m[94m--> [0mwatch.py:15:11
+   [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m logger = logging.getLogger("excubitor.watch")
+[1m[94m14[0m [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m _watcher: Optional["Watcher"] = None
+   [1m[94m|[0m           [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m16[0m [1m[94m|[0m _lock = threading.Lock()
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m [31m_watcher: [0m[1m[31mOptional["Watcher"][0m[0m[31m = None
+[0m[1m[94m15[0m [1m[32m+[0m [32m_watcher: [0m[1m[32m"Watcher" | None[0m[0m[32m = None
+[0m[1m[94m16[0m [1m[94m|[0m _lock = threading.Lock()
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP037[0m [[1m[96m*[0m][1m Remove quotes from type annotation[0m
+  [1m[94m--> [0mwatch.py:15:20
+   [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m logger = logging.getLogger("excubitor.watch")
+[1m[94m14[0m [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m _watcher: Optional["Watcher"] = None
+   [1m[94m|[0m                    [1m[91m^^^^^^^^^[0m
+[1m[94m16[0m [1m[94m|[0m _lock = threading.Lock()
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove quotes[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m [31m_watcher: [0m[1m[31mOptional["Watcher"][0m[0m[31m = None
+[0m[1m[94m15[0m [1m[32m+[0m [32m_watcher: [0m[1m[32mOptional[Watcher][0m[0m[32m = None
+[0m[1m[94m16[0m [1m[94m|[0m _lock = threading.Lock()
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+  [1m[94m--> [0mwatch.py:22:23
+   [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m     def __init__(self) -> None:
+[1m[94m21[0m [1m[94m|[0m         self._stop = threading.Event()
+[1m[94m22[0m [1m[94m|[0m         self._thread: Optional[threading.Thread] = None
+   [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m23[0m [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m     def start(self) -> None:
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m         self._stop = threading.Event()
+[1m[94m  [0m [1m[31m-[0m [31m        self._thread: [0m[1m[31mOptional[threading.Thread][0m[0m[31m = None
+[0m[1m[94m22[0m [1m[32m+[0m [32m        self._thread: [0m[1m[32mthreading.Thread | None[0m[0m[32m = None
+[0m[1m[94m23[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+  [1m[94m--> [0mwatch.py:46:30
+   [1m[94m|[0m
+[1m[94m44[0m [1m[94m|[0m             self._stop.wait(interval)
+[1m[94m45[0m [1m[94m|[0m
+[1m[94m46[0m [1m[94m|[0m     def scan_once(self, cfg: Optional[dict[str, Any]] = None) -> list[str]:
+   [1m[94m|[0m                              [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m47[0m [1m[94m|[0m         """Check overdue open turns and fire one alert each. Returns fired turn_ids."""
+[1m[94m48[0m [1m[94m|[0m         cfg = cfg or config.settings()
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m45[0m [1m[94m|[0m
+[1m[94m  [0m [1m[31m-[0m [31m    def scan_once(self, cfg: [0m[1m[31mOptional[dict[str,[0m[0m[31m [0m[1m[31mAny]][0m[0m[31m = None) -> list[str]:
+[0m[1m[94m46[0m [1m[32m+[0m [32m    def scan_once(self, cfg: [0m[1m[32mdict[str, Any] |[0m[0m[32m [0m[1m[32mNone[0m[0m[32m = None) -> list[str]:
+[0m[1m[94m47[0m [1m[94m|[0m         """Check overdue open turns and fire one alert each. Returns fired turn_ids."""
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+  [1m[94m--> [0mwork.py:68:10
+   [1m[94m|[0m
+[1m[94m66[0m [1m[94m|[0m     *,
+[1m[94m67[0m [1m[94m|[0m     session_id: str = "",
+[1m[94m68[0m [1m[94m|[0m     cfg: Optional[dict[str, Any]] = None,
+   [1m[94m|[0m          [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m69[0m [1m[94m|[0m ) -> Optional[dict[str, Any]]:
+[1m[94m70[0m [1m[94m|[0m     """Return a pre_tool_call directive when a no-progress loop is detected, else None."""
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m67[0m [1m[94m|[0m     session_id: str = "",
+[1m[94m  [0m [1m[31m-[0m [31m    cfg: [0m[1m[31mOptional[dict[str,[0m[0m[31m [0m[1m[31mAny]][0m[0m[31m = None,
+[0m[1m[94m68[0m [1m[32m+[0m [32m    cfg: [0m[1m[32mdict[str, Any] |[0m[0m[32m [0m[1m[32mNone[0m[0m[32m = None,
+[0m[1m[94m69[0m [1m[94m|[0m ) -> Optional[dict[str, Any]]:
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mUP045[0m [[1m[96m*[0m][1m Use `X | None` for type annotations[0m
+  [1m[94m--> [0mwork.py:69:6
+   [1m[94m|[0m
+[1m[94m67[0m [1m[94m|[0m     session_id: str = "",
+[1m[94m68[0m [1m[94m|[0m     cfg: Optional[dict[str, Any]] = None,
+[1m[94m69[0m [1m[94m|[0m ) -> Optional[dict[str, Any]]:
+   [1m[94m|[0m      [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m70[0m [1m[94m|[0m     """Return a pre_tool_call directive when a no-progress loop is detected, else None."""
+[1m[94m71[0m [1m[94m|[0m     cfg = cfg or config.settings()
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Convert to `X | None`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m68[0m [1m[94m|[0m     cfg: Optional[dict[str, Any]] = None,
+[1m[94m  [0m [1m[31m-[0m [31m) -> [0m[1m[31mOptional[dict[str,[0m[0m[31m [0m[1m[31mAny]]:[0m[0m[31m
+[0m[1m[94m69[0m [1m[32m+[0m [32m) -> [0m[1m[32mdict[str, Any] |[0m[0m[32m [0m[1m[32mNone:[0m[0m[32m
+[0m[1m[94m70[0m [1m[94m|[0m     """Return a pre_tool_call directive when a no-progress loop is detected, else None."""
+[1m[94m  [0m [1m[94m|[0m
+
+Found 23 errors.
+[[36m*[0m] 23 fixable with `--fix`.

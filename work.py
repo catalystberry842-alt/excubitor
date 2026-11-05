@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from . import config, ledger
 from .hashing import args_hash, result_hash
@@ -51,12 +51,16 @@ def no_progress_count(history: list[dict[str, Any]]) -> int:
 def spend_ratio_for_turn(turn: dict[str, Any], cfg: dict[str, Any], session_id: str = "") -> float:
     day = ledger.utc_day()
     day_spend = ledger.spend_for("day", day, day)
-    sess_spend = ledger.spend_for("session", session_id or turn.get("session_id") or "", day) if (
-        session_id or turn.get("session_id")
-    ) else float(turn.get("cost_usd") or 0.0)
+    sess_spend = (
+        ledger.spend_for("session", session_id or turn.get("session_id") or "", day)
+        if (session_id or turn.get("session_id"))
+        else float(turn.get("cost_usd") or 0.0)
+    )
     day_cap = max(1e-9, float(cfg.get("day_budget_usd") or 5.0))
     sess_cap = max(1e-9, float(cfg.get("session_budget_usd") or 2.0))
-    return max(day_spend / day_cap, sess_spend / sess_cap, float(turn.get("cost_usd") or 0.0) / sess_cap)
+    return max(
+        day_spend / day_cap, sess_spend / sess_cap, float(turn.get("cost_usd") or 0.0) / sess_cap
+    )
 
 
 def evaluate_loop(
@@ -65,8 +69,8 @@ def evaluate_loop(
     args: Any,
     *,
     session_id: str = "",
-    cfg: Optional[dict[str, Any]] = None,
-) -> Optional[dict[str, Any]]:
+    cfg: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     """Return a pre_tool_call directive when a no-progress loop is detected, else None."""
     cfg = cfg or config.settings()
     turn = ledger.get_turn(turn_id) or {}
@@ -102,12 +106,16 @@ def evaluate_loop(
     return {"action": "block", "message": reason}
 
 
-def on_post_tool_call(tool_name=None, args=None, result=None, task_id="", session_id="", turn_id="", **kwargs):
+def on_post_tool_call(
+    tool_name=None, args=None, result=None, task_id="", session_id="", turn_id="", **kwargs
+):
     try:
         cfg = config.settings()
         if not cfg.get("enabled", True):
             return None
-        tid = ledger.resolve_turn_id(session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or "")
+        tid = ledger.resolve_turn_id(
+            session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or ""
+        )
         if not ledger.get_turn(tid):
             # Ensure a turn exists so result hashes still land for CLI paths.
             ledger.open_turn(

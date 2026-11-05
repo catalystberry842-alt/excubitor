@@ -7,7 +7,6 @@ import json
 import re
 from typing import Any
 
-
 _WS = re.compile(r"\s+")
 
 
@@ -44,7 +43,9 @@ def result_hash(result: Any) -> str:
     return stable_hash(text)
 
 
-def message_key(platform: str | None, chat_id: str | None, message_id: str | None, raw: Any = None) -> str:
+def message_key(
+    platform: str | None, chat_id: str | None, message_id: str | None, raw: Any = None
+) -> str:
     """platform+chat_id+message_id, falling back to a hash of raw_message / text."""
     plat = (platform or "unknown").strip().lower() or "unknown"
     chat = str(chat_id or "").strip() or "-"

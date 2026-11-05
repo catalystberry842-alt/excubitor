@@ -74,3 +74,18 @@ config_schema:
     default: true
     label: Enabled
     description: "Master kill switch. When false every hook is a no-op (fail-open)."
+  seen_ttl_hours:
+    type: float
+    default: 168.0
+    label: Seen-message TTL (hours)
+    description: "Prune inbound dedup keys older than this (default 7 days)."
+  turn_ttl_hours:
+    type: float
+    default: 72.0
+    label: Closed-turn TTL (hours)
+    description: "Prune closed ledger turns older than this (default 3 days)."
+  max_tool_rows_per_turn:
+    type: int
+    default: 500
+    label: Max tool rows per turn
+    description: "Cap tool_call history rows retained per turn (bounds DB under loop storms)."

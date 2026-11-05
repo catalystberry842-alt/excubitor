@@ -74,7 +74,9 @@ def test_full_ledger_story(modules, monkeypatch):
 
     # Bind a session turn and burn some money + loop
     turn_id = "story-turn"
-    ledger.open_turn(turn_id, session_id="story-sess", platform="telegram", chat_id="99", deadline_minutes=5)
+    ledger.open_turn(
+        turn_id, session_id="story-sess", platform="telegram", chat_id="99", deadline_minutes=5
+    )
     spend.on_post_api_request(
         session_id="story-sess",
         turn_id=turn_id,
@@ -84,16 +86,24 @@ def test_full_ledger_story(modules, monkeypatch):
     args = {"query": "find variance"}
     blocked = None
     for _ in range(6):
-        blocked = work.evaluate_loop(turn_id, "tool_search", args, session_id="story-sess", cfg=cfg.settings())
+        blocked = work.evaluate_loop(
+            turn_id, "tool_search", args, session_id="story-sess", cfg=cfg.settings()
+        )
         work.on_post_tool_call(
-            tool_name="tool_search", args=args, result='{"hits":[1,2,3]}', turn_id=turn_id, session_id="story-sess"
+            tool_name="tool_search",
+            args=args,
+            result='{"hits":[1,2,3]}',
+            turn_id=turn_id,
+            session_id="story-sess",
         )
         if blocked and blocked.get("action") == "block":
             break
     assert blocked and blocked["action"] == "block"
 
     with ledger._tx() as conn:
-        conn.execute("UPDATE turns SET deadline_at = ? WHERE turn_id = ?", (time.time() - 1, turn_id))
+        conn.execute(
+            "UPDATE turns SET deadline_at = ? WHERE turn_id = ?", (time.time() - 1, turn_id)
+        )
     watch.Watcher().scan_once(cfg.settings())
     assert alerts, "expected hang alert"
     assert "tool_search" in alerts[0] or "loop" in alerts[0] or "no reply" in alerts[0]

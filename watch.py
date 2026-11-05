@@ -5,21 +5,21 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 from . import config, ledger
 from .notify import send_alert
 
 logger = logging.getLogger("excubitor.watch")
 
-_watcher: Optional["Watcher"] = None
+_watcher: Watcher | None = None
 _lock = threading.Lock()
 
 
 class Watcher:
     def __init__(self) -> None:
         self._stop = threading.Event()
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -43,7 +43,7 @@ class Watcher:
                 interval = 30.0
             self._stop.wait(interval)
 
-    def scan_once(self, cfg: Optional[dict[str, Any]] = None) -> list[str]:
+    def scan_once(self, cfg: dict[str, Any] | None = None) -> list[str]:
         """Check overdue open turns and fire one alert each. Returns fired turn_ids."""
         cfg = cfg or config.settings()
         fired: list[str] = []

@@ -1,0 +1,5 @@
+{
+  "scenario": "e_status",
+  "output": "Excubitor status\n  enabled: True\n  day: 2026-11-05  spend $0.0000 / $5.00\n  session cap: $2.00\n  duplicates dropped: 0\n  loops stopped: 0\n  cap vetoes: 0\n  alerts fired: 0\n  estimated $ tracked: $0.0000\n  open turns: 3\n  reply deadline: 5.0 min\n  loop threshold: 6 (tightens with spend)\n  notifier: log",
+  "pass": true
+}

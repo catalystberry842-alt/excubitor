@@ -1,0 +1,7 @@
+{
+  "scenario": "f_failopen",
+  "hook_return": null,
+  "hermes_continued": true,
+  "error": null,
+  "pass": true
+}

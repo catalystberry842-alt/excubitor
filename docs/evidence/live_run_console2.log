@@ -1,0 +1,172 @@
+2026-11-05 19:42:33,916 INFO excubitor.live: === A webhook duplicate + restart persistence ===
+2026-11-05 19:43:00,733 INFO hermes_cli.plugins: Plugin 'browser-browser-use' registered browser provider: browser-use
+2026-11-05 19:43:00,735 INFO hermes_cli.plugins: Plugin 'browser-browserbase' registered browser provider: browserbase
+2026-11-05 19:43:00,737 INFO hermes_cli.plugins: Plugin 'browser-firecrawl' registered browser provider: firecrawl
+2026-11-05 19:43:00,847 INFO hermes_cli.plugins: Plugin 'default' registered delegation provider: default
+2026-11-05 19:43:00,851 INFO hermes_cli.plugins: Plugin 'deepinfra' registered image_gen provider: deepinfra
+2026-11-05 19:43:00,852 INFO hermes_cli.plugins: Plugin 'fal' registered image_gen provider: fal
+2026-11-05 19:43:00,854 INFO hermes_cli.plugins: Plugin 'krea' registered image_gen provider: krea
+2026-11-05 19:43:00,856 INFO hermes_cli.plugins: Plugin 'meta-ai-image-gen' registered image_gen provider: meta-ai
+2026-11-05 19:43:00,857 INFO hermes_cli.plugins: Plugin 'openai' registered image_gen provider: openai
+2026-11-05 19:43:00,859 INFO hermes_cli.plugins: Plugin 'openai-codex' registered image_gen provider: openai-codex
+2026-11-05 19:43:00,860 INFO hermes_cli.plugins: Plugin 'openrouter' registered image_gen provider: openrouter
+2026-11-05 19:43:00,860 INFO hermes_cli.plugins: Plugin 'openrouter' registered image_gen provider: nous
+2026-11-05 19:43:00,862 INFO hermes_cli.plugins: Plugin 'xai' registered image_gen provider: xai
+2026-11-05 19:43:01,000 INFO hermes_cli.plugins: Plugin 'deepinfra' registered video_gen provider: deepinfra
+2026-11-05 19:43:01,001 INFO hermes_cli.plugins: Plugin 'fal' registered video_gen provider: fal
+2026-11-05 19:43:01,003 INFO hermes_cli.plugins: Plugin 'openrouter' registered video_gen provider: openrouter
+2026-11-05 19:43:01,004 INFO hermes_cli.plugins: Plugin 'xai' registered video_gen provider: xai
+2026-11-05 19:43:01,007 INFO hermes_cli.plugins: Plugin 'web-brave-free' registered web provider: brave-free
+2026-11-05 19:43:01,008 INFO hermes_cli.plugins: Plugin 'web-ddgs' registered web provider: ddgs
+2026-11-05 19:43:01,010 INFO hermes_cli.plugins: Plugin 'web-exa' registered web provider: exa
+2026-11-05 19:43:01,013 INFO hermes_cli.plugins: Plugin 'web-firecrawl' registered web provider: firecrawl
+2026-11-05 19:43:01,015 INFO hermes_cli.plugins: Plugin 'web-keenable' registered web provider: keenable
+2026-11-05 19:43:01,016 INFO hermes_cli.plugins: Plugin 'web-openai-native' registered web provider: openai-native
+2026-11-05 19:43:01,018 INFO hermes_cli.plugins: Plugin 'web-parallel' registered web provider: parallel
+2026-11-05 19:43:01,019 INFO hermes_cli.plugins: Plugin 'web-perplexity' registered web provider: perplexity
+2026-11-05 19:43:01,021 INFO hermes_cli.plugins: Plugin 'web-searxng' registered web provider: searxng
+2026-11-05 19:43:01,022 INFO hermes_cli.plugins: Plugin 'web-tavily' registered web provider: tavily
+2026-11-05 19:43:01,023 INFO hermes_cli.plugins: Plugin 'web-xai' registered web provider: xai
+2026-11-05 19:43:01,057 INFO hermes_cli.plugin_capabilities: capability_check plugin=excubitor capability=tools.override decision=deny checked_by=plugin_capability_granted evidence=not granted
+2026-11-05 19:43:01,064 INFO excubitor: excubitor: registered (intake/work/spend/watch on one ledger)
+2026-11-05 19:43:01,064 INFO hermes_cli.plugins: Plugin discovery complete: 64 found, 60 enabled
+2026-11-05 19:43:01,653 INFO excubitor.live: === B loop ===
+2026-11-05 19:43:01,696 INFO hermes_cli.plugins: Plugin 'browser-browser-use' registered browser provider: browser-use
+2026-11-05 19:43:01,697 INFO hermes_cli.plugins: Plugin 'browser-browserbase' registered browser provider: browserbase
+2026-11-05 19:43:01,698 INFO hermes_cli.plugins: Plugin 'browser-firecrawl' registered browser provider: firecrawl
+2026-11-05 19:43:01,748 INFO hermes_cli.plugins: Plugin 'default' registered delegation provider: default
+2026-11-05 19:43:01,750 INFO hermes_cli.plugins: Plugin 'deepinfra' registered image_gen provider: deepinfra
+2026-11-05 19:43:01,751 INFO hermes_cli.plugins: Plugin 'fal' registered image_gen provider: fal
+2026-11-05 19:43:01,753 INFO hermes_cli.plugins: Plugin 'krea' registered image_gen provider: krea
+2026-11-05 19:43:01,754 INFO hermes_cli.plugins: Plugin 'meta-ai-image-gen' registered image_gen provider: meta-ai
+2026-11-05 19:43:01,755 INFO hermes_cli.plugins: Plugin 'openai' registered image_gen provider: openai
+2026-11-05 19:43:01,757 INFO hermes_cli.plugins: Plugin 'openai-codex' registered image_gen provider: openai-codex
+2026-11-05 19:43:01,758 INFO hermes_cli.plugins: Plugin 'openrouter' registered image_gen provider: openrouter
+2026-11-05 19:43:01,758 INFO hermes_cli.plugins: Plugin 'openrouter' registered image_gen provider: nous
+2026-11-05 19:43:01,760 INFO hermes_cli.plugins: Plugin 'xai' registered image_gen provider: xai
+2026-11-05 19:43:01,764 INFO hermes_cli.plugins: Plugin 'deepinfra' registered video_gen provider: deepinfra
+2026-11-05 19:43:01,770 INFO hermes_cli.plugins: Plugin 'fal' registered video_gen provider: fal
+2026-11-05 19:43:01,772 INFO hermes_cli.plugins: Plugin 'openrouter' registered video_gen provider: openrouter
+2026-11-05 19:43:01,773 INFO hermes_cli.plugins: Plugin 'xai' registered video_gen provider: xai
+2026-11-05 19:43:01,774 INFO hermes_cli.plugins: Plugin 'web-brave-free' registered web provider: brave-free
+2026-11-05 19:43:01,775 INFO hermes_cli.plugins: Plugin 'web-ddgs' registered web provider: ddgs
+2026-11-05 19:43:01,776 INFO hermes_cli.plugins: Plugin 'web-exa' registered web provider: exa
+2026-11-05 19:43:01,777 INFO hermes_cli.plugins: Plugin 'web-firecrawl' registered web provider: firecrawl
+2026-11-05 19:43:01,778 INFO hermes_cli.plugins: Plugin 'web-keenable' registered web provider: keenable
+2026-11-05 19:43:01,779 INFO hermes_cli.plugins: Plugin 'web-openai-native' registered web provider: openai-native
+2026-11-05 19:43:01,781 INFO hermes_cli.plugins: Plugin 'web-parallel' registered web provider: parallel
+2026-11-05 19:43:01,782 INFO hermes_cli.plugins: Plugin 'web-perplexity' registered web provider: perplexity
+2026-11-05 19:43:01,784 INFO hermes_cli.plugins: Plugin 'web-searxng' registered web provider: searxng
+2026-11-05 19:43:01,785 INFO hermes_cli.plugins: Plugin 'web-tavily' registered web provider: tavily
+2026-11-05 19:43:01,787 INFO hermes_cli.plugins: Plugin 'web-xai' registered web provider: xai
+2026-11-05 19:43:01,792 INFO hermes_cli.plugin_capabilities: capability_check plugin=excubitor capability=tools.override decision=deny checked_by=plugin_capability_granted evidence=not granted
+2026-11-05 19:43:01,795 INFO excubitor: excubitor: registered (intake/work/spend/watch on one ledger)
+2026-11-05 19:43:01,796 INFO hermes_cli.plugins: Plugin discovery complete: 64 found, 60 enabled
+2026-11-05 19:43:01,800 INFO run_agent: Loaded environment variables from /tmp/excubitor-livehome-wshvg_8x/cache/scratch/excubitor-live-b-1weyq9tw/.env
+2026-11-05 19:43:02,965 INFO run_agent: OpenAI client created (agent_init, shared=True) thread=MainThread:139957656340352 provider=openrouter base_url=https://openrouter.ai/api/v1 model=openai/gpt-4o-mini
+2026-11-05 19:43:03,046 WARNING agent.credential_pool: Ingested OPENROUTER_API_KEY from environment into the openrouter credential pool — this enables OpenRouter spend. Remove the key or run hermes auth remove openrouter <n> to suppress.
+2026-11-05 19:43:03,066 INFO tools.tool_search: tool_search activated (tier 1): 1 core/visible tools kept, 1 deferred (~377 tokens), listing full (budget ~4000 tokens)
+2026-11-05 19:43:03,132 INFO agent.turn_context: conversation turn: session=20261105_194303_9e80e5 model=openai/gpt-4o-mini provider=openrouter platform=unknown history=0 msg='IMPORTANT: Call the terminal tool with EXACTLY this command five times in a row ...'
+2026-11-05 19:43:03,517 INFO run_agent: OpenAI client created (chat_completion_stream_request, shared=False) thread=Thread-3 (<lambda>):139957155899072 provider=openrouter base_url=https://openrouter.ai/api/v1 model=openai/gpt-4o-mini
+2026-11-05 19:43:05,789 INFO agent.conversation_loop: API call #1: model=openai/gpt-4o-mini provider=openrouter in=2875 out=96 total=2971 latency=2.3s id=gen-1793904184-QedxQs2AGl0ASeX0Ye83 upstream=OpenAI
+2026-11-05 19:43:05,798 WARNING run_agent: Removed duplicate tool call: terminal
+2026-11-05 19:43:05,798 WARNING run_agent: Removed duplicate tool call: terminal
+2026-11-05 19:43:05,798 WARNING run_agent: Removed duplicate tool call: terminal
+2026-11-05 19:43:05,798 WARNING run_agent: Removed duplicate tool call: terminal
+2026-11-05 19:43:05,818 INFO tools.terminal_tool: Creating new local environment for task default...
+2026-11-05 19:43:05,854 INFO tools.environments.base: Session snapshot created (session=f7237c9610bd, cwd=/workspace)
+2026-11-05 19:43:05,855 INFO tools.terminal_tool: local environment ready for task default
+2026-11-05 19:43:05,904 INFO agent.tool_executor: tool terminal completed (0.09s, 54 chars)
+2026-11-05 19:43:06,754 INFO agent.conversation_loop: API call #2: model=openai/gpt-4o-mini provider=openrouter in=2917 out=16 total=2933 latency=0.8s cache=2816/2917 (97%) id=gen-1793904185-PJlodqqe2NyX9FhLuUhH upstream=OpenAI
+2026-11-05 19:43:06,789 INFO agent.tool_executor: tool terminal completed (0.03s, 54 chars)
+2026-11-05 19:43:07,764 INFO agent.conversation_loop: API call #3: model=openai/gpt-4o-mini provider=openrouter in=2959 out=16 total=2975 latency=1.0s cache=2816/2959 (95%) id=gen-1793904186-QftFGcjDFQWdT7SKPXaa upstream=OpenAI
+2026-11-05 19:43:07,807 INFO agent.tool_executor: tool terminal completed (0.04s, 54 chars)
+2026-11-05 19:43:08,635 INFO agent.conversation_loop: API call #4: model=openai/gpt-4o-mini provider=openrouter in=3045 out=16 total=3061 latency=0.8s cache=2944/3045 (97%) id=gen-1793904187-GfhCjPPk5x53sneRFAI3 upstream=OpenAI
+2026-11-05 19:43:08,648 INFO agent.tool_executor: tool terminal completed (0.01s, 115 chars)
+2026-11-05 19:43:09,615 INFO agent.conversation_loop: API call #5: model=openai/gpt-4o-mini provider=openrouter in=3108 out=16 total=3124 latency=1.0s cache=2944/3108 (95%) id=gen-1793904188-Rf6FqBcK2ARwdtmEFA60 upstream=OpenAI
+2026-11-05 19:43:09,629 INFO agent.tool_executor: tool terminal completed (0.01s, 115 chars)
+2026-11-05 19:43:10,374 INFO agent.conversation_loop: API call #6: model=openai/gpt-4o-mini provider=openrouter in=3171 out=2 total=3173 latency=0.7s cache=3072/3171 (97%) id=gen-1793904189-NpnaLbR3q0ipuyVqJIF8 upstream=OpenAI
+2026-11-05 19:43:10,382 INFO agent.conversation_loop: Turn ended: reason=text_response(finish_reason=stop) model=openai/gpt-4o-mini api_calls=6/8 budget=6/8 tool_turns=5 last_msg_role=assistant response_len=4 session=20261105_194303_9e80e5
+2026-11-05 19:43:10,388 INFO excubitor.live: === C spend cap ===
+2026-11-05 19:43:10,441 INFO hermes_cli.plugins: Plugin 'browser-browser-use' registered browser provider: browser-use
+2026-11-05 19:43:10,443 INFO hermes_cli.plugins: Plugin 'browser-browserbase' registered browser provider: browserbase
+2026-11-05 19:43:10,445 INFO hermes_cli.plugins: Plugin 'browser-firecrawl' registered browser provider: firecrawl
+2026-11-05 19:43:10,495 INFO hermes_cli.plugins: Plugin 'default' registered delegation provider: default
+2026-11-05 19:43:10,497 INFO hermes_cli.plugins: Plugin 'deepinfra' registered image_gen provider: deepinfra
+2026-11-05 19:43:10,498 INFO hermes_cli.plugins: Plugin 'fal' registered image_gen provider: fal
+2026-11-05 19:43:10,500 INFO hermes_cli.plugins: Plugin 'krea' registered image_gen provider: krea
+2026-11-05 19:43:10,503 INFO hermes_cli.plugins: Plugin 'meta-ai-image-gen' registered image_gen provider: meta-ai
+2026-11-05 19:43:10,505 INFO hermes_cli.plugins: Plugin 'openai' registered image_gen provider: openai
+2026-11-05 19:43:10,506 INFO hermes_cli.plugins: Plugin 'openai-codex' registered image_gen provider: openai-codex
+2026-11-05 19:43:10,508 INFO hermes_cli.plugins: Plugin 'openrouter' registered image_gen provider: openrouter
+2026-11-05 19:43:10,508 INFO hermes_cli.plugins: Plugin 'openrouter' registered image_gen provider: nous
+2026-11-05 19:43:10,510 INFO hermes_cli.plugins: Plugin 'xai' registered image_gen provider: xai
+2026-11-05 19:43:10,516 INFO hermes_cli.plugins: Plugin 'deepinfra' registered video_gen provider: deepinfra
+2026-11-05 19:43:10,517 INFO hermes_cli.plugins: Plugin 'fal' registered video_gen provider: fal
+2026-11-05 19:43:10,519 INFO hermes_cli.plugins: Plugin 'openrouter' registered video_gen provider: openrouter
+2026-11-05 19:43:10,521 INFO hermes_cli.plugins: Plugin 'xai' registered video_gen provider: xai
+2026-11-05 19:43:10,523 INFO hermes_cli.plugins: Plugin 'web-brave-free' registered web provider: brave-free
+2026-11-05 19:43:10,524 INFO hermes_cli.plugins: Plugin 'web-ddgs' registered web provider: ddgs
+2026-11-05 19:43:10,526 INFO hermes_cli.plugins: Plugin 'web-exa' registered web provider: exa
+2026-11-05 19:43:10,528 INFO hermes_cli.plugins: Plugin 'web-firecrawl' registered web provider: firecrawl
+2026-11-05 19:43:10,529 INFO hermes_cli.plugins: Plugin 'web-keenable' registered web provider: keenable
+2026-11-05 19:43:10,531 INFO hermes_cli.plugins: Plugin 'web-openai-native' registered web provider: openai-native
+2026-11-05 19:43:10,533 INFO hermes_cli.plugins: Plugin 'web-parallel' registered web provider: parallel
+2026-11-05 19:43:10,534 INFO hermes_cli.plugins: Plugin 'web-perplexity' registered web provider: perplexity
+2026-11-05 19:43:10,536 INFO hermes_cli.plugins: Plugin 'web-searxng' registered web provider: searxng
+2026-11-05 19:43:10,538 INFO hermes_cli.plugins: Plugin 'web-tavily' registered web provider: tavily
+2026-11-05 19:43:10,539 INFO hermes_cli.plugins: Plugin 'web-xai' registered web provider: xai
+2026-11-05 19:43:10,544 INFO hermes_cli.plugin_capabilities: capability_check plugin=excubitor capability=tools.override decision=deny checked_by=plugin_capability_granted evidence=not granted
+2026-11-05 19:43:10,548 INFO excubitor: excubitor: registered (intake/work/spend/watch on one ledger)
+2026-11-05 19:43:10,549 INFO hermes_cli.plugins: Plugin discovery complete: 64 found, 60 enabled
+2026-11-05 19:43:10,562 INFO run_agent: OpenAI client created (agent_init, shared=True) thread=MainThread:139957656340352 provider=openrouter base_url=https://openrouter.ai/api/v1 model=openai/gpt-4o-mini
+2026-11-05 19:43:10,584 INFO agent.turn_context: conversation turn: session=20261105_194310_8a0b9e model=openai/gpt-4o-mini provider=openrouter platform=unknown history=0 msg='Say hi in one word.'
+2026-11-05 19:43:10,591 INFO agent.conversation_loop: Turn ended: reason=blocked_by_plugin_pre_llm_call model=openai/gpt-4o-mini api_calls=0/1 budget=0/1 tool_turns=0 last_msg_role=assistant response_len=49 session=20261105_194310_8a0b9e
+2026-11-05 19:43:10,596 INFO excubitor.live: === D hang alert ===
+2026-11-05 19:43:10,641 INFO hermes_cli.plugins: Plugin 'browser-browser-use' registered browser provider: browser-use
+2026-11-05 19:43:10,643 INFO hermes_cli.plugins: Plugin 'browser-browserbase' registered browser provider: browserbase
+2026-11-05 19:43:10,645 INFO hermes_cli.plugins: Plugin 'browser-firecrawl' registered browser provider: firecrawl
+2026-11-05 19:43:10,691 INFO hermes_cli.plugins: Plugin 'default' registered delegation provider: default
+2026-11-05 19:43:10,693 INFO hermes_cli.plugins: Plugin 'deepinfra' registered image_gen provider: deepinfra
+2026-11-05 19:43:10,694 INFO hermes_cli.plugins: Plugin 'fal' registered image_gen provider: fal
+2026-11-05 19:43:10,696 INFO hermes_cli.plugins: Plugin 'krea' registered image_gen provider: krea
+2026-11-05 19:43:10,698 INFO hermes_cli.plugins: Plugin 'meta-ai-image-gen' registered image_gen provider: meta-ai
+2026-11-05 19:43:10,700 INFO hermes_cli.plugins: Plugin 'openai' registered image_gen provider: openai
+2026-11-05 19:43:10,702 INFO hermes_cli.plugins: Plugin 'openai-codex' registered image_gen provider: openai-codex
+2026-11-05 19:43:10,704 INFO hermes_cli.plugins: Plugin 'openrouter' registered image_gen provider: openrouter
+2026-11-05 19:43:10,705 INFO hermes_cli.plugins: Plugin 'openrouter' registered image_gen provider: nous
+2026-11-05 19:43:10,707 INFO hermes_cli.plugins: Plugin 'xai' registered image_gen provider: xai
+2026-11-05 19:43:10,712 INFO hermes_cli.plugins: Plugin 'deepinfra' registered video_gen provider: deepinfra
+2026-11-05 19:43:10,714 INFO hermes_cli.plugins: Plugin 'fal' registered video_gen provider: fal
+2026-11-05 19:43:10,716 INFO hermes_cli.plugins: Plugin 'openrouter' registered video_gen provider: openrouter
+2026-11-05 19:43:10,717 INFO hermes_cli.plugins: Plugin 'xai' registered video_gen provider: xai
+2026-11-05 19:43:10,719 INFO hermes_cli.plugins: Plugin 'web-brave-free' registered web provider: brave-free
+2026-11-05 19:43:10,720 INFO hermes_cli.plugins: Plugin 'web-ddgs' registered web provider: ddgs
+2026-11-05 19:43:10,722 INFO hermes_cli.plugins: Plugin 'web-exa' registered web provider: exa
+2026-11-05 19:43:10,723 INFO hermes_cli.plugins: Plugin 'web-firecrawl' registered web provider: firecrawl
+2026-11-05 19:43:10,725 INFO hermes_cli.plugins: Plugin 'web-keenable' registered web provider: keenable
+2026-11-05 19:43:10,726 INFO hermes_cli.plugins: Plugin 'web-openai-native' registered web provider: openai-native
+2026-11-05 19:43:10,728 INFO hermes_cli.plugins: Plugin 'web-parallel' registered web provider: parallel
+2026-11-05 19:43:10,730 INFO hermes_cli.plugins: Plugin 'web-perplexity' registered web provider: perplexity
+2026-11-05 19:43:10,732 INFO hermes_cli.plugins: Plugin 'web-searxng' registered web provider: searxng
+2026-11-05 19:43:10,733 INFO hermes_cli.plugins: Plugin 'web-tavily' registered web provider: tavily
+2026-11-05 19:43:10,735 INFO hermes_cli.plugins: Plugin 'web-xai' registered web provider: xai
+2026-11-05 19:43:10,740 INFO hermes_cli.plugin_capabilities: capability_check plugin=excubitor capability=tools.override decision=deny checked_by=plugin_capability_granted evidence=not granted
+2026-11-05 19:43:10,743 INFO excubitor: excubitor: registered (intake/work/spend/watch on one ledger)
+2026-11-05 19:43:10,745 INFO hermes_cli.plugins: Plugin discovery complete: 64 found, 60 enabled
+2026-11-05 19:43:19,074 INFO excubitor.live: === E status ===
+2026-11-05 19:43:19,078 INFO excubitor.live: === F fail-open ===
+Traceback (most recent call last):
+  File "/workspace/excubitor-devtools/live_scenarios.py", line 741, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/workspace/excubitor-devtools/live_scenarios.py", line 729, in main
+    report["scenarios"]["f"] = scenario_f_failopen(home)
+                               ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/workspace/excubitor-devtools/live_scenarios.py", line 627, in scenario_f_failopen
+    if getattr(mod, "__file__", "").endswith("/excubitor/__init__.py") or (
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'endswith'
+2026-11-05 19:43:19,820 INFO tools.terminal_tool: Shutting down 1 remaining sandbox(es)...
+2026-11-05 19:43:19,821 INFO tools.terminal_tool: Manually cleaned up environment for task: default
+2026-11-05 19:43:19,821 INFO tools.terminal_tool: Cleaned 1 environments

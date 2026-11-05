@@ -55,7 +55,9 @@ def on_pre_tool_call(tool_name=None, args=None, task_id="", session_id="", turn_
 
     from . import ledger
 
-    tid = ledger.resolve_turn_id(session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or "")
+    tid = ledger.resolve_turn_id(
+        session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or ""
+    )
     if not ledger.get_turn(tid):
         ledger.open_turn(
             tid,

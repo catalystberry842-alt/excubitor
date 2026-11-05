@@ -28,7 +28,12 @@ def test_pre_llm_call_vetoes_over_day_cap(modules, monkeypatch):
     monkeypatch.setattr(
         cfg,
         "settings",
-        lambda: {**cfg.DEFAULTS, "day_budget_usd": 0.5, "session_budget_usd": 10.0, "enabled": True},
+        lambda: {
+            **cfg.DEFAULTS,
+            "day_budget_usd": 0.5,
+            "session_budget_usd": 10.0,
+            "enabled": True,
+        },
     )
     turn_id = "t-spend-2"
     ledger.open_turn(turn_id, session_id="sess-b", deadline_minutes=5)
@@ -46,7 +51,12 @@ def test_pre_tool_call_blocks_mid_turn(modules, monkeypatch):
     monkeypatch.setattr(
         cfg,
         "settings",
-        lambda: {**cfg.DEFAULTS, "day_budget_usd": 10.0, "session_budget_usd": 0.1, "enabled": True},
+        lambda: {
+            **cfg.DEFAULTS,
+            "day_budget_usd": 10.0,
+            "session_budget_usd": 0.1,
+            "enabled": True,
+        },
     )
     turn_id = "t-spend-3"
     ledger.open_turn(turn_id, session_id="sess-c", deadline_minutes=5)

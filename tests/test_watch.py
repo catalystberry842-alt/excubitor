@@ -17,7 +17,9 @@ def test_hang_alert_fires_once(modules, monkeypatch):
     monkeypatch.setattr(
         watch,
         "send_alert",
-        lambda c, title="", body="", payload=None: alerts.append({"title": title, "body": body, "payload": payload}) or True,
+        lambda c, title="", body="", payload=None: (
+            alerts.append({"title": title, "body": body, "payload": payload}) or True
+        ),
     )
 
     turn_id = "t-hang-1"
@@ -49,7 +51,9 @@ def test_reply_clears_hang(modules, monkeypatch):
     turn_id = "t-hang-2"
     ledger.open_turn(turn_id, session_id="s-hang-2", deadline_minutes=5)
     with ledger._tx() as conn:
-        conn.execute("UPDATE turns SET deadline_at = ? WHERE turn_id = ?", (time.time() - 1, turn_id))
+        conn.execute(
+            "UPDATE turns SET deadline_at = ? WHERE turn_id = ?", (time.time() - 1, turn_id)
+        )
     spend.on_post_llm_call(session_id="s-hang-2", turn_id=turn_id)
     fired = watch.Watcher().scan_once(cfg.settings())
     assert fired == []

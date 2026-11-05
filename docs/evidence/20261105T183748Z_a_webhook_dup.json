@@ -1,0 +1,6 @@
+{
+  "scenario": "a_webhook_duplicate",
+  "pass": false,
+  "error": "gateway health timeout",
+  "log": "/workspace/excubitor/docs/evidence/gateway_20261105T183748Z.log"
+}

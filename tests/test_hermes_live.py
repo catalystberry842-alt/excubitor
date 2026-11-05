@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -31,9 +30,7 @@ def hermes_home(tmp_path, monkeypatch):
     home.mkdir()
     (home / "plugins").mkdir()
     (home / "plugins" / "excubitor").symlink_to(ROOT)
-    (home / "config.yaml").write_text(
-        "plugins:\n  enabled:\n    - excubitor\n  disabled: []\n"
-    )
+    (home / "config.yaml").write_text("plugins:\n  enabled:\n    - excubitor\n  disabled: []\n")
     key = os.environ.get("OPENROUTER_API_KEY", "")
     if key:
         (home / ".env").write_text(f"OPENROUTER_API_KEY={key}\n")
@@ -112,15 +109,28 @@ def test_gateway_dedup_via_real_hm_hook(hermes_home):
 @pytest.mark.skipif(not os.environ.get("OPENROUTER_API_KEY"), reason="OPENROUTER_API_KEY not set")
 def test_agent_hooks_fire_via_real_aigent(hermes_home):
     mgr = _load_plugins()
-    for name in ("pre_llm_call", "post_llm_call", "post_api_request", "pre_tool_call", "post_tool_call"):
+    for name in (
+        "pre_llm_call",
+        "post_llm_call",
+        "post_api_request",
+        "pre_tool_call",
+        "post_tool_call",
+    ):
         assert mgr.has_hook(name), name
 
     from hermes_cli import lifecycle
     from run_agent import AIAgent
 
-    counts = {k: 0 for k in (
-        "pre_llm_call", "post_llm_call", "post_api_request", "pre_tool_call", "post_tool_call"
-    )}
+    counts = {
+        k: 0
+        for k in (
+            "pre_llm_call",
+            "post_llm_call",
+            "post_api_request",
+            "pre_tool_call",
+            "post_tool_call",
+        )
+    }
     orig = lifecycle.invoke_hook
 
     def counting(name, *a, **kw):
