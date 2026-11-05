@@ -16,11 +16,32 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-HERMES = Path("/workspace/hermes-agent")
+
+
+def _find_hermes() -> Path | None:
+    env = (os.environ.get("HERMES_AGENT_ROOT") or os.environ.get("HERMES_ROOT") or "").strip()
+    candidates = []
+    if env:
+        candidates.append(Path(env).expanduser())
+    candidates.extend(
+        [
+            Path("/workspace/hermes-agent"),
+            Path("/workspace/recheck/hermes-agent-fresh"),
+            ROOT.parent / "hermes-agent",
+            Path.cwd() / "hermes-agent",
+        ]
+    )
+    for cand in candidates:
+        if (cand / "run_agent.py").exists() or (cand / "hermes_cli").is_dir():
+            return cand.resolve()
+    return None
+
+
+HERMES = _find_hermes() or Path("/workspace/hermes-agent")
 
 pytestmark = pytest.mark.skipif(
-    not HERMES.exists(),
-    reason="Hermes checkout missing at /workspace/hermes-agent",
+    HERMES is None or not HERMES.exists(),
+    reason="Hermes checkout missing (set HERMES_AGENT_ROOT)",
 )
 
 

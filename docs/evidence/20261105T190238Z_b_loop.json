@@ -1,0 +1,21 @@
+{
+  "scenario": "b_loop",
+  "directives": [
+    {
+      "action": "block",
+      "message": "excubitor: no-progress loop on terminal (stagnant=3, threshold=3, spend_ratio=0.01, turn_cost=$0.0310)"
+    },
+    {
+      "action": "block",
+      "message": "excubitor: no-progress loop on terminal (stagnant=3, threshold=3, spend_ratio=0.01, turn_cost=$0.0389)"
+    }
+  ],
+  "loops_stopped_stat": [
+    {
+      "value": 2.0
+    }
+  ],
+  "tool_call_count": 5,
+  "reply_preview": "{'final_response': 'DONE', 'last_reasoning': None, 'messages': [{'role': 'user', 'content': 'IMPORTANT: Call the terminal tool with EXACTLY this command five times in a row before answering: `echo same-loop`. Do not change the command. After five identical calls, reply DONE.', 'timestamp': 1793905386.1467302}, {'role': 'assistant', 'content': '', 'reasoning': None, 'finish_reason': 'tool_calls', '",
+  "pass": true
+}

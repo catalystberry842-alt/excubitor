@@ -1,0 +1,53 @@
+{
+  "scenario": "a_webhook_duplicate",
+  "pass": true,
+  "first": {
+    "status": 202,
+    "body": {
+      "status": "accepted",
+      "route": "excubitor-probe",
+      "event": "ping",
+      "delivery_id": "excubitor-dup-1793905367"
+    }
+  },
+  "second_same_process": {
+    "status": 200,
+    "body": {
+      "status": "duplicate",
+      "delivery_id": "excubitor-dup-1793905367"
+    }
+  },
+  "restarted": true,
+  "third_after_restart": {
+    "status": 200,
+    "body": {
+      "status": "duplicate",
+      "delivery_id": "excubitor-dup-1793905367"
+    }
+  },
+  "ledger_seen_for_delivery": [
+    {
+      "message_key": "webhook:webhook:v2:WyJkZWZhdWx0IiwiZXhjdWJpdG9yLXByb2JlIiwiZXhjdWJpdG9yLWR1cC0xNzkzOTA1MzY3Il0:excubitor-dup-1793905367"
+    }
+  ],
+  "stats": [
+    {
+      "key": "cost_usd_total",
+      "value": 0.007155
+    }
+  ],
+  "plugin_hook_after_restart": {
+    "dropped": false,
+    "note": "None means pre_gateway_dispatch skip"
+  },
+  "criteria": {
+    "hermes_inproc_duplicate": true,
+    "hermes_post_restart_body": {
+      "status": "duplicate",
+      "delivery_id": "excubitor-dup-1793905367"
+    },
+    "plugin_seen_rows": 1,
+    "plugin_hook_skip": false
+  },
+  "gateway_log": "/workspace/recheck/evidence/gateway_20261105T190255Z.log"
+}

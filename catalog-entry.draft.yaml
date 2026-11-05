@@ -7,7 +7,7 @@
 # name must match plugin.yaml; sha must be the full commit; quote version.
 name: excubitor
 repo: https://github.com/catalystberry842-alt/excubitor
-sha: d0ac09c697c07268d2d4e1a7513712b2d75b003f
+sha: c920ad010f9ebeb659133515711da4831de63f07
 version: "0.1.0"
 description: "Night sentry for Hermes turns: one per-turn ledger that dedups inbound replay, stops no-progress tool loops, enforces a spend cap, and alerts when a turn hangs without a reply. Disclosure — default notifier is log-only; optional ntfy.sh or webhook POSTs; one background watch thread; SQLite state in plugin-data/excubitor; no credentials or telemetry; fail-open on internal errors. Limitation — event.internal bypasses gateway hooks."
 maintainer: catalystberry842-alt

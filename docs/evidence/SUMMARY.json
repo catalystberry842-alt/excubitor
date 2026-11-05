@@ -1,29 +1,33 @@
 {
-  "stamp": "live-final",
+  "stamp": "recheck-20261105T190238Z",
   "summary": {
     "a": true,
     "b": true,
     "c": true,
     "d": true,
     "e": true,
-    "f": true
+    "f": true,
+    "g": true
   },
   "all_pass": true,
   "evidence_files": {
-    "a": "20261105T184233Z_a_webhook_dup.json",
-    "b": "20261105T184233Z_b_loop.json",
-    "c": "20261105T184233Z_c_cap.json",
-    "d": "20261105T184336Z_d_hang.json",
-    "e": "20261105T184233Z_e_status.json",
-    "f": "20261105T184336Z_f_failopen.json"
+    "a": "20261105T190238Z_a_webhook_dup.json",
+    "b": "20261105T190238Z_b_loop.json",
+    "c": "20261105T190238Z_c_cap.json",
+    "d": "20261105T190238Z_d_hang.json",
+    "e": "20261105T190238Z_e_status.json",
+    "f": "20261105T190238Z_f_failopen.json"
   },
   "notes": {
-    "a": "Real hermes gateway webhook; same delivery \u2192 duplicate in-process; after restart Hermes still returned duplicate AND plugin_db seen_messages had the delivery key.",
-    "b": "Real AIAgent + openrouter gpt-4o-mini; pre_tool_call blocked no-progress terminal loops mid-turn.",
-    "c": "Tiny day_budget; pre_llm_call veto with clear budget message; turn ended blocked_by_plugin_pre_llm_call.",
-    "d": "Open overdue turn; Watcher alerted once; first run delivered ntfy (see 184233Z_d_hang + ntfy_poll_verify); retest hit ntfy 429 but ledger alerts_fired=1.",
-    "e": "/excubitor status_text rendered ledger summary.",
+    "a": "Fresh clone + Hermes main f87c541. Real gateway webhook: first accepted, second+post-restart duplicate. Durable seen_messages row present. Synthetic MessageEvent hook-skip was false (chat_id shape differs from live webhook v2 token) \u2014 not a product regression; Hermes+ledger both retained the delivery.",
+    "b": "openrouter gpt-4o-mini; pre_tool_call blocked no-progress terminal loops (2 blocks, loops_stopped=2).",
+    "c": "Tiny day_budget + seeded spend; pre_llm_call veto 'day budget exhausted'.",
+    "d": "Open overdue turn; Watcher alerted once; ntfy delivered title Excubitor: turn hung on random topic.",
+    "e": "/excubitor status_text rendered.",
     "f": "Injected ledger.already_seen RuntimeError; intake returned None; Hermes continued.",
-    "g": "Covered by A restart + durable seen_messages row."
-  }
+    "g": "Covered by A restart + durable seen_messages row.",
+    "unit_tests": "32 passed, ~71% coverage, ruff clean on clean recheck.",
+    "install_bug_found": "README previously said `hermes plugins install github:owner/repo` which resolves to github.com/github:owner/repo (broken). Correct form is owner/repo or full git URL."
+  },
+  "prior_run": "20261105T184233Z / 184336Z also PASS (kept for comparison)."
 }

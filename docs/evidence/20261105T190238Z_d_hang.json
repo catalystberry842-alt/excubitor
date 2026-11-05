@@ -1,0 +1,41 @@
+{
+  "scenario": "d_hang",
+  "fired_turn_ids": [],
+  "alerts_stat": [
+    {
+      "value": 1.0
+    }
+  ],
+  "turn": [
+    {
+      "turn_id": "hang-live-1793905394",
+      "message_key": "",
+      "session_id": "hang-sess",
+      "platform": "cli",
+      "chat_id": "",
+      "opened_at": 1793905334.6266675,
+      "deadline_at": 1793905399.6266675,
+      "status": "alerted",
+      "reply_at": null,
+      "cost_usd": 0.4,
+      "loop_count": 6,
+      "loop_blocked": 0,
+      "alerts_fired": 1,
+      "last_reason": "excubitor: stuck after 6 loop stop(s), no reply in 1.1 min, $0.40 spent, ledger note: stuck after 6 search loops",
+      "meta_json": "{}"
+    }
+  ],
+  "ntfy_topic": "excubitor-recheck-5651202598757966",
+  "ntfy_poll_tail": [
+    {
+      "id": "jCj9s5WaTIxq",
+      "time": 1793905400,
+      "expires": 1793948600,
+      "event": "message",
+      "topic": "excubitor-recheck-5651202598757966",
+      "title": "Excubitor: turn hung",
+      "message": "excubitor: stuck after 6 loop stop(s), no reply in 1.1 min, $0.40 spent, ledger note: stuck after 6 search loops"
+    }
+  ],
+  "pass": true
+}

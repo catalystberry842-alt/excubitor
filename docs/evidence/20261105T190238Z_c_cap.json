@@ -1,0 +1,11 @@
+{
+  "scenario": "c_cap",
+  "blocks": [
+    {
+      "action": "block",
+      "message": "excubitor: day budget exhausted ($1.0000 / $0.00)"
+    }
+  ],
+  "reply_preview": "{'final_response': 'excubitor: day budget exhausted ($1.0000 / $0.00)', 'last_reasoning': None, 'messages': [{'role': 'user', 'content': '[Message withheld: a pre_llm_call policy hook blocked it.]', 'timestamp': 1793905394.428325, 'display_metadata': {'withheld_prompt': 'Say hi in one word.'}}, {'role': 'assistant', 'content': 'excubitor: day budget exhausted ($1.0000 / $0.00)', 'timestamp': 17939",
+  "pass": true
+}

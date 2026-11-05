@@ -1,7 +1,8 @@
 # Excubitor security & quality audit
 
-Date: 2026-11-05 (Africa/Lagos). Scope: `/workspace/excubitor` plugin code + live Hermes scenarios.
+Date: 2026-11-05 (Africa/Lagos). Scope: plugin code + live Hermes scenarios.
 Method: manual review, ruff, mypy (partial), pytest-cov, live gateway/agent runs.
+Independent recheck: fresh `/workspace/recheck` clone + Hermes `main` f87c541 + fresh venv/HERMES_HOME (see below).
 
 ## Summary
 
@@ -42,3 +43,27 @@ Method: manual review, ruff, mypy (partial), pytest-cov, live gateway/agent runs
 - `docs/evidence/*_a_webhook_dup.json` … `*_f_failopen.json`
 - `docs/evidence/ntfy_poll_verify.ndjson` — live hang alert on ntfy
 - `docs/evidence/pytest_cov.txt`, `ruff.txt`
+
+
+## Independent recheck (2026-11-05 ~20:00 Africa/Lagos)
+
+| Check | Result |
+|---|---|
+| Fresh clone from GitHub | OK |
+| Fresh Hermes `main` + venv (Python 3.14) | OK (`hermes` vgit.f87c541) |
+| `hermes plugins validate` | PASS |
+| `hermes plugins doctor excubitor --ci` | PASS (0 tools, 7 hooks) |
+| Unit tests | 32 passed, ~71% coverage, ruff clean |
+| Live A–F | ALL PASS (`docs/evidence/20261105T190238Z_*.json`) |
+| CI `gh run list` | success on `main` (latest pin + evidence commits) |
+
+### Fixes found during recheck
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| D1 | High (docs) | README/TESTING said `hermes plugins install github:owner/repo`, which Hermes resolves to `github.com/github:owner/repo` (clone 404). | **Fixed** — docs now use `owner/repo` or full git URL. |
+| D2 | Medium (docs) | TESTING.md §5 pointed at box-only paths (`/workspace/hermes-venv`, `/workspace/excubitor-devtools/...`). | **Fixed** — portable `scripts/live_scenarios.py` + env vars. |
+| D3 | Low (tests) | `tests/test_hermes_live.py` hard-coded `/workspace/hermes-agent`. | **Fixed** — discovers via `HERMES_AGENT_ROOT` / common checkouts. |
+| N1 | Info | Scenario A synthetic `MessageEvent` hook-skip was `false` while durable `seen_messages` + Hermes duplicate both held — chat_id shape differs from live webhook v2 tokens. | **Documented** — not a product false-fail; pass criteria already accepted Hermes-dup OR seen row. |
+
+No product logic regressions found vs prior evidence.
