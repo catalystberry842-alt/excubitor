@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "plugin": "excubitor",
+  "version": "0.1.0",
+  "level": "alert",
+  "enabled": true,
+  "day": "2026-11-05",
+  "day_spend_usd": 0.42,
+  "day_budget_usd": 5.0,
+  "session_budget_usd": 2.0,
+  "spend_ratio": 0.084,
+  "duplicates_dropped": 3,
+  "loops_stopped": 2,
+  "cap_vetoes": 1,
+  "alerts": 1,
+  "cost_usd_total": 0.42,
+  "open_turns": 0,
+  "overdue_turns": 0,
+  "reply_deadline_minutes": 5.0,
+  "loop_threshold": 6,
+  "notifier": "log",
+  "recent_alerts": [
+    {
+      "turn_id": "demo",
+      "session_id": "sess",
+      "platform": "cli",
+      "cost_usd": 0.42,
+      "loop_count": 6,
+      "reason": "stuck after 6 search loops",
+      "opened_at": 1793905837.2529702,
+      "deadline_at": 1793905927.2529702
+    }
+  ],
+  "chip_label": "\u26a0 $0.42/$5 \u00b7 hang"
+}

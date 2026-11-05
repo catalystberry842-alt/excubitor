@@ -100,6 +100,16 @@ excubitor: no-progress loop on terminal (stagnant=3, threshold=3, spend_ratio=0.
 excubitor: day budget exhausted ($1.0000 / $0.00)
 ```
 
+### Desktop status chip (live shape)
+
+```text
+🛡 $0.07/$5          ← ok (accent)
+🛡 $4.20/$5 · 2 open ← warning (amber) when near cap / open turns
+🛡 ⚠ $0.40/$5 · hang ← alert (red) when a turn hung
+```
+
+Click opens the ledger pane (duplicates / loops / vetoes / recent alerts).
+
 ### Hang alert on ntfy (live)
 
 ```text
@@ -164,22 +174,28 @@ Security/quality write-up: [AUDIT.md](AUDIT.md). Reproduce: [TESTING.md](TESTING
 - **Cost is estimated** unless the hook payload carries an explicit USD figure.
 - CLI/TUI may not fire `pre_gateway_dispatch`; those turns open the ledger later (no inbound dedup there).
 - Hermes may also keep its own delivery idempotency; Excubitor's durable `seen_messages` is the plugin-side belt when hooks fire with a stable `message_id`.
-- **No custom Desktop/Dashboard UI yet** — v0.1 is hooks + `/excubitor` + `config_schema` settings form. Status chips / panels are on the roadmap (Hermes does support plugin UI; see below).
+- Desktop UI needs Hermes Desktop (or Webapp) with the plugin Desktop half enabled; CLI/gateway alone still get hooks + `/excubitor`.
 
-## UI note (for judges)
+## Desktop status chip
 
-Hermes **does** support plugin UI — three separate surfaces:
+Unified package: `desktop/plugin.js` + `dashboard/plugin_api.py` (API-only, no dashboard tab).
 
-1. **Desktop Plugin SDK** (`desktop/plugin.js`) — status-bar chips, panes, palette, Settings pages
-2. **Web Dashboard** (`dashboard/manifest.json`) — tabs, shell slots, optional `plugin_api.py`
-3. **Automatic** — any `config_schema` key already renders under Desktop **Settings → Plugins** (Excubitor already benefits)
+| Surface | What you get |
+|---|---|
+| Status-bar chip | Day spend vs cap, open-turn count, color by level (`ok` / `warning` near cap or open turns / `alert` on hang) |
+| Click → pane | Ledger summary: duplicates, loops stopped, cap vetoes, estimated $ tracked, recent alerts |
+| Settings → Plugins | Automatic form from `config_schema` (already present) |
 
-Excubitor v0.1 ships the automatic settings form + slash command only. Building a status chip / dashboard tab is feasible before the Nov 11 deadline and is listed on the roadmap — not claimed as done.
+Enable the **Desktop** half under **Capabilities → Plugins** (and keep the agent plugin enabled so `/api/plugins/excubitor/status` mounts). Works without Desktop — hooks + `/excubitor` are unchanged.
+
+![Excubitor Desktop status chip preview](docs/evidence/desktop_chip.png)
+
+> **Preview mock** (labeled in-image): Hermes Desktop Electron could not be built on the verification box (`node-pty` needs `make`; apt mirrors unavailable). The chip/pane chrome matches `desktop/plugin.js`; numbers come from a live `GET /api/plugins/excubitor/status` (see `docs/evidence/desktop_api_status.json`). `hermes plugins validate` reports `desktop surface` OK.
 
 ## Roadmap
 
-- [ ] Desktop status-bar chip: day spend / open turns / last alert (unified `desktop/plugin.js`)
-- [ ] Optional Dashboard tab with live ledger snapshot
+- [x] Desktop status-bar chip + ledger pane (`desktop/plugin.js`)
+- [ ] Optional rich Dashboard tab (beyond the hidden API mount)
 - [ ] Richer `/excubitor` subcommands (`reset-day`, `open-turns`, `mute`)
 - [ ] Catalog PR to `NousResearch/hermes-agent` `plugin-catalog/excubitor.yaml`
 

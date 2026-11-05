@@ -1,0 +1,13 @@
+{
+  "name": "excubitor",
+  "label": "Excubitor",
+  "description": "Night-sentry ledger API for the Desktop status chip (no dashboard tab).",
+  "icon": "Shield",
+  "version": "0.1.0",
+  "tab": {
+    "path": "/excubitor",
+    "hidden": true
+  },
+  "entry": "dist/index.js",
+  "api": "plugin_api.py"
+}

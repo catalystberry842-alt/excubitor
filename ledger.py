@@ -512,6 +512,123 @@ def summarize() -> dict[str, Any]:
     }
 
 
+
+def recent_alerts(limit: int = 5) -> list[dict[str, Any]]:
+    """Newest alerted turns (fail-open → [])."""
+    try:
+        limit = max(1, min(20, int(limit)))
+        rows = _conn().execute(
+            "SELECT turn_id, session_id, platform, status, cost_usd, loop_count, "
+            "alerts_fired, last_reason, opened_at, deadline_at, reply_at "
+            "FROM turns WHERE alerts_fired > 0 OR status = 'alerted' "
+            "ORDER BY COALESCE(deadline_at, opened_at) DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        out = []
+        for r in rows:
+            out.append({k: r[k] for k in r.keys()})
+        return out
+    except Exception as exc:
+        logger.debug("excubitor: recent_alerts failed: %s", exc)
+        return []
+
+
+def snapshot_for_ui() -> dict[str, Any]:
+    """JSON-safe ledger snapshot for Desktop/Dashboard ``plugin_api``.
+
+    Levels:
+      - alert: any recent hang alert, or open turns past deadline
+      - warning: day spend ≥ 80% of cap, or open turns with loop pressure
+      - ok: otherwise
+    """
+    try:
+        from . import config as _config
+    except ImportError:
+        import config as _config  # type: ignore
+
+    cfg = _config.settings()
+    summary = summarize()
+    day_cap = float(cfg.get("day_budget_usd") or 5.0)
+    sess_cap = float(cfg.get("session_budget_usd") or 2.0)
+    day_spend = float(summary.get("day_spend_usd") or 0.0)
+    ratio = (day_spend / day_cap) if day_cap > 0 else 0.0
+    alerts = recent_alerts(5)
+    now = time.time()
+    overdue = 0
+    try:
+        row = _conn().execute(
+            "SELECT COUNT(*) AS c FROM turns WHERE status = 'open' AND deadline_at < ?",
+            (now,),
+        ).fetchone()
+        overdue = int(row["c"]) if row else 0
+    except Exception:
+        overdue = 0
+
+    recent_alert = False
+    for a in alerts[:3]:
+        ts = a.get("deadline_at") or a.get("opened_at") or 0
+        try:
+            if float(ts) >= now - 3600:  # alerted in the last hour → red
+                recent_alert = True
+                break
+        except Exception:
+            pass
+
+    if overdue > 0 or recent_alert:
+        level = "alert"
+    elif ratio >= 0.8 or int(summary.get("open_turns") or 0) > 0 or int(summary.get("alerts") or 0) > 0:
+        level = "warning"
+    else:
+        level = "ok"
+
+    return {
+        "ok": True,
+        "plugin": "excubitor",
+        "version": "0.1.0",
+        "level": level,
+        "enabled": bool(cfg.get("enabled", True)),
+        "day": summary.get("day"),
+        "day_spend_usd": day_spend,
+        "day_budget_usd": day_cap,
+        "session_budget_usd": sess_cap,
+        "spend_ratio": round(ratio, 4),
+        "duplicates_dropped": int(summary.get("duplicates_dropped") or 0),
+        "loops_stopped": int(summary.get("loops_stopped") or 0),
+        "cap_vetoes": int(summary.get("cap_vetoes") or 0),
+        "alerts": int(summary.get("alerts") or 0),
+        "cost_usd_total": float(summary.get("cost_usd_total") or 0.0),
+        "open_turns": int(summary.get("open_turns") or 0),
+        "overdue_turns": overdue,
+        "reply_deadline_minutes": float(cfg.get("reply_deadline_minutes") or 5.0),
+        "loop_threshold": int(cfg.get("loop_threshold") or 6),
+        "notifier": str(cfg.get("notifier") or "log"),
+        "recent_alerts": [
+            {
+                "turn_id": a.get("turn_id"),
+                "session_id": a.get("session_id") or "",
+                "platform": a.get("platform") or "",
+                "cost_usd": float(a.get("cost_usd") or 0),
+                "loop_count": int(a.get("loop_count") or 0),
+                "reason": (a.get("last_reason") or "")[:240],
+                "opened_at": a.get("opened_at"),
+                "deadline_at": a.get("deadline_at"),
+            }
+            for a in alerts
+        ],
+        "chip_label": _chip_label(day_spend, day_cap, summary, overdue, level),
+    }
+
+
+def _chip_label(day_spend, day_cap, summary, overdue, level) -> str:
+    spend = f"${day_spend:.2f}/${day_cap:.0f}"
+    open_n = int(summary.get("open_turns") or 0)
+    if level == "alert":
+        return f"⚠ {spend} · hang"
+    if open_n:
+        return f"{spend} · {open_n} open"
+    return spend
+
+
 _ops_since_prune = 0
 
 

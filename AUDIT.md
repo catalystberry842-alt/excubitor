@@ -67,3 +67,15 @@ Independent recheck: fresh `/workspace/recheck` clone + Hermes `main` f87c541 + 
 | N1 | Info | Scenario A synthetic `MessageEvent` hook-skip was `false` while durable `seen_messages` + Hermes duplicate both held — chat_id shape differs from live webhook v2 tokens. | **Documented** — not a product false-fail; pass criteria already accepted Hermes-dup OR seen row. |
 
 No product logic regressions found vs prior evidence.
+
+
+## Desktop UI (2026-11-05)
+
+Added unified Desktop half:
+
+- `desktop/plugin.js` — status-bar chip + ledger pane (`STATUSBAR_AREAS.right`, optional `panes`, `host.openWorkspace`)
+- `dashboard/plugin_api.py` — `GET /status` snapshot (shared Desktop/Dashboard mount)
+- `ledger.snapshot_for_ui()` — level `ok|warning|alert`, recent alerts, chip label
+- Tests: `tests/test_desktop_api.py` (5)
+- `hermes plugins validate` reports `desktop surface` OK; doctor OK
+- Agent hooks/commands unchanged when Desktop is absent

@@ -47,5 +47,5 @@ Target: one take, ~75–85 s. Show usefulness + reliability + polish.
 ## Out of scope for the video
 
 - Opening the catalog PR
-- Desktop status chip (not in v0.1)
+- Desktop status chip (shipped — enable in Capabilities → Plugins)
 - Claiming internal-event coverage
