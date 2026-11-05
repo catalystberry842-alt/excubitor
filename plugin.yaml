@@ -6,7 +6,7 @@ license: MIT
 manifest_version: 2
 api_version: 1
 requires_hermes: ">=0.21.0"
-homepage: https://github.com/OWNER/excubitor
+homepage: ""  # set to your public repo URL before catalog PR
 tags: [gateway, reliability, budget, watchdog, dedup]
 provides_hooks:
   - pre_gateway_dispatch
