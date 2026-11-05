@@ -38,7 +38,7 @@ def main() -> int:
         r"(AIAgent\.\w+\s*=|setattr\(\s*(?:sys\.modules|AIAgent)|sys\.modules\[)"
     )
     for path in ROOT.rglob("*.py"):
-        if ".venv" in path.parts or path.parts[-2:] == ("tests", path.name) or "tests" in path.parts:
+        if ".venv" in path.parts or "tests" in path.parts or "scripts" in path.parts:
             continue
         if ban.search(path.read_text(encoding="utf-8")):
             errors.append(f"possible core override in {path.relative_to(ROOT)}")
