@@ -82,12 +82,20 @@ def test_plugin_api_status_endpoint(ledger_mod, monkeypatch, tmp_path):
     sys.modules[spec.name] = mod
     assert spec.loader is not None
     spec.loader.exec_module(mod)
+    # FastAPI is host-provided; module must load without it (CI has no fastapi).
     health = asyncio.run(mod.health())
     assert health["ok"] is True
     status = asyncio.run(mod.status())
     assert status["ok"] is True
     assert "chip_label" in status
     assert status["level"] in ("ok", "warning", "alert")
+    # When fastapi is present, router must be exported for Hermes to mount.
+    try:
+        import fastapi  # noqa: F401
+    except ImportError:
+        assert mod.router is None
+    else:
+        assert mod.router is not None
 
 
 def test_desktop_plugin_js_exists_and_is_plain_esm():

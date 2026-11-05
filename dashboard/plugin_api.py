@@ -3,6 +3,9 @@
 Shared by Hermes Desktop (ctx.rest) and the web dashboard. Loaded via
 importlib as a standalone module; sibling package imports are bootstrapped.
 Fail-open: handlers return JSON and never raise to the client.
+
+``fastapi`` is provided by the Hermes host at mount time. Import is lazy so
+unit tests without FastAPI installed can still import sibling helpers.
 """
 
 from __future__ import annotations
@@ -13,13 +16,16 @@ import types
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
-
 logger = logging.getLogger("excubitor.plugin_api")
 
-router = APIRouter()
-
 _ROOT = Path(__file__).resolve().parents[1]  # .../plugins/excubitor
+
+try:
+    from fastapi import APIRouter
+except ImportError:  # pragma: no cover - host always has fastapi
+    APIRouter = None  # type: ignore[misc, assignment]
+
+router = APIRouter() if APIRouter is not None else None
 
 
 def _ensure_ledger() -> Any:
@@ -47,7 +53,6 @@ def _ensure_ledger() -> Any:
 
         return ledger
     except Exception as exc:
-        # Last resort: load leaf modules explicitly (relative imports need package).
         import importlib.util
 
         logger.debug("excubitor: package import failed (%s); loading modules", exc)
@@ -94,12 +99,20 @@ def _snapshot() -> dict[str, Any]:
         }
 
 
-@router.get("/status")
-async def status() -> dict[str, Any]:
-    """Ledger snapshot for the Desktop status-bar chip / pane."""
-    return _snapshot()
+if router is not None:
 
+    @router.get("/status")
+    async def status() -> dict[str, Any]:
+        """Ledger snapshot for the Desktop status-bar chip / pane."""
+        return _snapshot()
 
-@router.get("/health")
-async def health() -> dict[str, Any]:
-    return {"ok": True, "plugin": "excubitor"}
+    @router.get("/health")
+    async def health() -> dict[str, Any]:
+        return {"ok": True, "plugin": "excubitor"}
+else:
+    # Test harness without fastapi: keep callables importable.
+    async def status() -> dict[str, Any]:  # type: ignore[misc]
+        return _snapshot()
+
+    async def health() -> dict[str, Any]:  # type: ignore[misc]
+        return {"ok": True, "plugin": "excubitor"}
