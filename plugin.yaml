@@ -1,0 +1,76 @@
+name: excubitor
+version: 0.1.0
+description: "Night sentry for Hermes turns: one per-turn ledger that dedups inbound replay, stops no-progress tool loops, enforces a spend cap, and alerts when a turn hangs without a reply."
+author: "O"
+license: MIT
+manifest_version: 2
+api_version: 1
+requires_hermes: ">=0.21.0"
+homepage: https://github.com/OWNER/excubitor
+tags: [gateway, reliability, budget, watchdog, dedup]
+provides_hooks:
+  - pre_gateway_dispatch
+  - pre_llm_call
+  - post_llm_call
+  - pre_tool_call
+  - post_tool_call
+  - post_api_request
+  - agent_loop_stopped
+provides_tools: []
+config_schema:
+  day_budget_usd:
+    type: float
+    default: 5.0
+    label: Day budget (USD)
+    description: "Hard day spend cap. pre_llm_call vetoes new turns once the day total reaches this; pre_tool_call blocks mid-turn."
+  session_budget_usd:
+    type: float
+    default: 2.0
+    label: Session budget (USD)
+    description: "Per-session spend cap (same veto/block semantics as the day budget)."
+  reply_deadline_minutes:
+    type: float
+    default: 5.0
+    label: Reply deadline (minutes)
+    description: "If an open turn has no outbound reply by this deadline, fire one alert drawn from the ledger."
+  loop_threshold:
+    type: int
+    default: 6
+    label: Loop threshold
+    description: "Base count of same-tool+args calls with no new result hashes before treating the turn as a no-progress loop. Tightens as budget is consumed."
+  loop_approve_first:
+    type: bool
+    default: true
+    label: Ask before first loop block
+    description: "On the first no-progress detection, escalate via approve (human gate) instead of hard-blocking. Later / high-spend detections always block."
+  notifier:
+    type: str
+    choices: [log, ntfy, webhook]
+    default: log
+    label: Notifier
+    description: "Where hang/cap/loop alerts go. Default is log only (no network)."
+  ntfy_topic:
+    type: str
+    default: ""
+    label: ntfy.sh topic
+    description: "Topic name when notifier=ntfy. Posts to https://ntfy.sh/<topic>."
+  webhook_url:
+    type: str
+    default: ""
+    label: Webhook URL
+    description: "HTTPS URL when notifier=webhook. POSTs a JSON alert body."
+  price_table:
+    type: dict
+    default: {}
+    label: Price overrides
+    description: "Optional model -> {input_per_mTok, output_per_mTok} USD overrides. Empty uses the built-in small table; unknown models fall back to a conservative default."
+  watch_interval_seconds:
+    type: float
+    default: 30.0
+    label: Watch interval (seconds)
+    description: "How often the background watcher scans open turns for missed deadlines."
+  enabled:
+    type: bool
+    default: true
+    label: Enabled
+    description: "Master kill switch. When false every hook is a no-op (fail-open)."

@@ -1,0 +1,450 @@
+"""Per-turn ledger persisted via plugin_db (SQLite). Fail-open on every write."""
+
+from __future__ import annotations
+
+import json
+import logging
+import sqlite3
+import threading
+import time
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterator, Optional
+
+logger = logging.getLogger("excubitor.ledger")
+
+PLUGIN_NAME = "excubitor"
+
+_local = threading.local()
+_test_db_path: Optional[Path] = None
+_schema_lock = threading.Lock()
+
+
+def use_test_db(path: Path | str | None) -> None:
+    """Point the ledger at a tempfile DB for unit tests (None restores plugin_db)."""
+    global _test_db_path
+    _test_db_path = Path(path) if path else None
+    if hasattr(_local, "conn"):
+        try:
+            _local.conn.close()
+        except Exception:
+            pass
+        try:
+            del _local.conn
+        except Exception:
+            pass
+
+
+def _open_conn() -> sqlite3.Connection:
+    if _test_db_path is not None:
+        conn = sqlite3.connect(str(_test_db_path), check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+    try:
+        from plugins.plugin_storage import plugin_db
+
+        conn = plugin_db(PLUGIN_NAME)
+        conn.row_factory = sqlite3.Row
+        return conn
+    except Exception as exc:
+        # Last-resort: process-local ephemeral DB so hooks still fail-open with state.
+        logger.debug("excubitor: plugin_db unavailable (%s); using ephemeral memory db", exc)
+        conn = sqlite3.connect(":memory:", check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+
+def _conn() -> sqlite3.Connection:
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        conn = _open_conn()
+        _local.conn = conn
+        _ensure_schema(conn)
+    return conn
+
+
+def _ensure_schema(conn: sqlite3.Connection) -> None:
+    with _schema_lock:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS seen_messages (
+                message_key TEXT PRIMARY KEY,
+                first_seen_at REAL NOT NULL,
+                platform TEXT,
+                chat_id TEXT,
+                message_id TEXT
+            );
+            CREATE TABLE IF NOT EXISTS turns (
+                turn_id TEXT PRIMARY KEY,
+                message_key TEXT,
+                session_id TEXT,
+                platform TEXT,
+                chat_id TEXT,
+                opened_at REAL NOT NULL,
+                deadline_at REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                reply_at REAL,
+                cost_usd REAL NOT NULL DEFAULT 0,
+                loop_count INTEGER NOT NULL DEFAULT 0,
+                loop_blocked INTEGER NOT NULL DEFAULT 0,
+                alerts_fired INTEGER NOT NULL DEFAULT 0,
+                last_reason TEXT,
+                meta_json TEXT NOT NULL DEFAULT '{}'
+            );
+            CREATE INDEX IF NOT EXISTS idx_turns_status_deadline ON turns(status, deadline_at);
+            CREATE INDEX IF NOT EXISTS idx_turns_session ON turns(session_id, opened_at);
+            CREATE TABLE IF NOT EXISTS tool_calls (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                turn_id TEXT NOT NULL,
+                ts REAL NOT NULL,
+                tool TEXT NOT NULL,
+                args_hash TEXT NOT NULL,
+                result_hash TEXT,
+                FOREIGN KEY(turn_id) REFERENCES turns(turn_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_tool_calls_turn ON tool_calls(turn_id, tool, args_hash);
+            CREATE TABLE IF NOT EXISTS spend (
+                scope TEXT NOT NULL,
+                scope_key TEXT NOT NULL,
+                day TEXT NOT NULL,
+                cost_usd REAL NOT NULL DEFAULT 0,
+                PRIMARY KEY (scope, scope_key, day)
+            );
+            CREATE TABLE IF NOT EXISTS stats (
+                key TEXT PRIMARY KEY,
+                value REAL NOT NULL DEFAULT 0
+            );
+            """
+        )
+        conn.commit()
+
+
+@contextmanager
+def _tx() -> Iterator[sqlite3.Connection]:
+    conn = _conn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+
+
+def utc_day(ts: float | None = None) -> str:
+    t = ts if ts is not None else time.time()
+    return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d")
+
+
+def bump_stat(key: str, delta: float = 1.0) -> None:
+    try:
+        with _tx() as conn:
+            conn.execute(
+                "INSERT INTO stats(key, value) VALUES(?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = value + excluded.value",
+                (key, float(delta)),
+            )
+    except Exception as exc:
+        logger.debug("excubitor: bump_stat failed: %s", exc)
+
+
+def get_stats() -> dict[str, float]:
+    try:
+        rows = _conn().execute("SELECT key, value FROM stats").fetchall()
+        return {r["key"]: float(r["value"]) for r in rows}
+    except Exception:
+        return {}
+
+
+def already_seen(message_key: str) -> bool:
+    try:
+        row = _conn().execute(
+            "SELECT 1 FROM seen_messages WHERE message_key = ?", (message_key,)
+        ).fetchone()
+        return row is not None
+    except Exception as exc:
+        logger.debug("excubitor: already_seen failed: %s", exc)
+        return False  # fail-open: treat as new
+
+
+def mark_seen(message_key: str, *, platform: str = "", chat_id: str = "", message_id: str = "") -> bool:
+    """Insert message_key. Returns True if newly inserted, False if duplicate/error."""
+    try:
+        with _tx() as conn:
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO seen_messages(message_key, first_seen_at, platform, chat_id, message_id) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (message_key, time.time(), platform, chat_id, message_id),
+            )
+            return cur.rowcount > 0
+    except Exception as exc:
+        logger.debug("excubitor: mark_seen failed: %s", exc)
+        return True  # fail-open: pretend new so we don't skip traffic
+
+
+def open_turn(
+    turn_id: str,
+    *,
+    message_key: str = "",
+    session_id: str = "",
+    platform: str = "",
+    chat_id: str = "",
+    deadline_minutes: float = 5.0,
+    meta: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    now = time.time()
+    deadline = now + max(0.1, float(deadline_minutes)) * 60.0
+    try:
+        with _tx() as conn:
+            existing = conn.execute("SELECT * FROM turns WHERE turn_id = ?", (turn_id,)).fetchone()
+            if existing:
+                return dict(existing)
+            conn.execute(
+                "INSERT INTO turns(turn_id, message_key, session_id, platform, chat_id, opened_at, "
+                "deadline_at, status, meta_json) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)",
+                (
+                    turn_id,
+                    message_key,
+                    session_id,
+                    platform,
+                    chat_id,
+                    now,
+                    deadline,
+                    json.dumps(meta or {}, ensure_ascii=False),
+                ),
+            )
+        return get_turn(turn_id) or {}
+    except Exception as exc:
+        logger.debug("excubitor: open_turn failed: %s", exc)
+        return {}
+
+
+def get_turn(turn_id: str) -> Optional[dict[str, Any]]:
+    try:
+        row = _conn().execute("SELECT * FROM turns WHERE turn_id = ?", (turn_id,)).fetchone()
+        return dict(row) if row else None
+    except Exception:
+        return None
+
+
+def find_open_turn_for_session(session_id: str) -> Optional[dict[str, Any]]:
+    if not session_id:
+        return None
+    try:
+        row = _conn().execute(
+            "SELECT * FROM turns WHERE session_id = ? AND status = 'open' "
+            "ORDER BY opened_at DESC LIMIT 1",
+            (session_id,),
+        ).fetchone()
+        return dict(row) if row else None
+    except Exception:
+        return None
+
+
+def resolve_turn_id(*, session_id: str = "", turn_id: str = "", task_id: str = "") -> str:
+    if turn_id:
+        return str(turn_id)
+    if task_id:
+        return str(task_id)
+    open_t = find_open_turn_for_session(session_id)
+    if open_t:
+        return str(open_t["turn_id"])
+    # Synthetic: one open bucket per session so CLI paths still ledger.
+    if session_id:
+        return f"sess:{session_id}"
+    return f"anon:{int(time.time() * 1000)}"
+
+
+def mark_reply(turn_id: str, *, status: str = "replied") -> None:
+    try:
+        with _tx() as conn:
+            conn.execute(
+                "UPDATE turns SET status = ?, reply_at = ? WHERE turn_id = ? AND status = 'open'",
+                (status, time.time(), turn_id),
+            )
+    except Exception as exc:
+        logger.debug("excubitor: mark_reply failed: %s", exc)
+
+
+def set_turn_reason(turn_id: str, reason: str) -> None:
+    try:
+        with _tx() as conn:
+            conn.execute("UPDATE turns SET last_reason = ? WHERE turn_id = ?", (reason, turn_id))
+    except Exception as exc:
+        logger.debug("excubitor: set_turn_reason failed: %s", exc)
+
+
+def add_cost(turn_id: str, amount: float, *, session_id: str = "") -> float:
+    """Add USD to the turn and day/session spend counters. Returns new turn cost."""
+    amount = max(0.0, float(amount or 0.0))
+    if amount <= 0:
+        turn = get_turn(turn_id)
+        return float((turn or {}).get("cost_usd") or 0.0)
+    day = utc_day()
+    try:
+        with _tx() as conn:
+            conn.execute(
+                "UPDATE turns SET cost_usd = cost_usd + ? WHERE turn_id = ?",
+                (amount, turn_id),
+            )
+            for scope, key in (("day", day), ("session", session_id or turn_id)):
+                if not key:
+                    continue
+                conn.execute(
+                    "INSERT INTO spend(scope, scope_key, day, cost_usd) VALUES (?, ?, ?, ?) "
+                    "ON CONFLICT(scope, scope_key, day) DO UPDATE SET "
+                    "cost_usd = cost_usd + excluded.cost_usd",
+                    (scope, key, day, amount),
+                )
+            conn.execute(
+                "INSERT INTO stats(key, value) VALUES('cost_usd_total', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = value + excluded.value",
+                (amount,),
+            )
+            row = conn.execute("SELECT cost_usd FROM turns WHERE turn_id = ?", (turn_id,)).fetchone()
+            return float(row["cost_usd"]) if row else amount
+    except Exception as exc:
+        logger.debug("excubitor: add_cost failed: %s", exc)
+        return 0.0
+
+
+def spend_for(scope: str, scope_key: str, day: str | None = None) -> float:
+    day = day or utc_day()
+    try:
+        row = _conn().execute(
+            "SELECT cost_usd FROM spend WHERE scope = ? AND scope_key = ? AND day = ?",
+            (scope, scope_key, day),
+        ).fetchone()
+        return float(row["cost_usd"]) if row else 0.0
+    except Exception:
+        return 0.0
+
+
+def record_tool_pre(turn_id: str, tool: str, args_hash: str) -> int:
+    """Insert a pre-call row (result_hash NULL). Returns row id or -1."""
+    try:
+        with _tx() as conn:
+            cur = conn.execute(
+                "INSERT INTO tool_calls(turn_id, ts, tool, args_hash, result_hash) VALUES (?, ?, ?, ?, NULL)",
+                (turn_id, time.time(), tool, args_hash),
+            )
+            return int(cur.lastrowid or -1)
+    except Exception as exc:
+        logger.debug("excubitor: record_tool_pre failed: %s", exc)
+        return -1
+
+
+def record_tool_post(turn_id: str, tool: str, args_hash: str, result_hash: str) -> None:
+    """Fill the newest matching open result_hash, or insert a completed row."""
+    try:
+        with _tx() as conn:
+            row = conn.execute(
+                "SELECT id FROM tool_calls WHERE turn_id = ? AND tool = ? AND args_hash = ? "
+                "AND result_hash IS NULL ORDER BY id DESC LIMIT 1",
+                (turn_id, tool, args_hash),
+            ).fetchone()
+            if row:
+                conn.execute(
+                    "UPDATE tool_calls SET result_hash = ? WHERE id = ?",
+                    (result_hash, row["id"]),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO tool_calls(turn_id, ts, tool, args_hash, result_hash) VALUES (?, ?, ?, ?, ?)",
+                    (turn_id, time.time(), tool, args_hash, result_hash),
+                )
+    except Exception as exc:
+        logger.debug("excubitor: record_tool_post failed: %s", exc)
+
+
+def tool_history(turn_id: str, tool: str, args_hash: str) -> list[dict[str, Any]]:
+    try:
+        rows = _conn().execute(
+            "SELECT * FROM tool_calls WHERE turn_id = ? AND tool = ? AND args_hash = ? ORDER BY id ASC",
+            (turn_id, tool, args_hash),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+def all_tool_calls(turn_id: str) -> list[dict[str, Any]]:
+    try:
+        rows = _conn().execute(
+            "SELECT * FROM tool_calls WHERE turn_id = ? ORDER BY id ASC", (turn_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+def bump_loop(turn_id: str, *, blocked: bool = False) -> int:
+    try:
+        with _tx() as conn:
+            conn.execute(
+                "UPDATE turns SET loop_count = loop_count + 1, "
+                "loop_blocked = loop_blocked + ? WHERE turn_id = ?",
+                (1 if blocked else 0, turn_id),
+            )
+            row = conn.execute("SELECT loop_count FROM turns WHERE turn_id = ?", (turn_id,)).fetchone()
+            return int(row["loop_count"]) if row else 0
+    except Exception:
+        return 0
+
+
+def overdue_open_turns(now: float | None = None) -> list[dict[str, Any]]:
+    now = now if now is not None else time.time()
+    try:
+        rows = _conn().execute(
+            "SELECT * FROM turns WHERE status = 'open' AND deadline_at <= ? AND alerts_fired = 0",
+            (now,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+def mark_alert_fired(turn_id: str, reason: str) -> None:
+    try:
+        with _tx() as conn:
+            conn.execute(
+                "UPDATE turns SET alerts_fired = alerts_fired + 1, last_reason = ?, status = 'alerted' "
+                "WHERE turn_id = ?",
+                (reason, turn_id),
+            )
+            conn.execute(
+                "INSERT INTO stats(key, value) VALUES('alerts', 1) "
+                "ON CONFLICT(key) DO UPDATE SET value = value + 1"
+            )
+    except Exception as exc:
+        logger.debug("excubitor: mark_alert_fired failed: %s", exc)
+
+
+def summarize() -> dict[str, Any]:
+    stats = get_stats()
+    day = utc_day()
+    try:
+        day_spend = spend_for("day", day, day)
+    except Exception:
+        day_spend = 0.0
+    open_n = 0
+    try:
+        row = _conn().execute("SELECT COUNT(*) AS c FROM turns WHERE status = 'open'").fetchone()
+        open_n = int(row["c"]) if row else 0
+    except Exception:
+        pass
+    return {
+        "duplicates_dropped": int(stats.get("duplicates_dropped", 0)),
+        "loops_stopped": int(stats.get("loops_stopped", 0)),
+        "cap_vetoes": int(stats.get("cap_vetoes", 0)),
+        "alerts": int(stats.get("alerts", 0)),
+        "cost_usd_total": float(stats.get("cost_usd_total", 0.0)),
+        "day_spend_usd": float(day_spend),
+        "open_turns": open_n,
+        "day": day,
+    }
