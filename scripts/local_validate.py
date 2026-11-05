@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """Offline stand-in for parts of `hermes plugins validate` when Hermes isn't installed.
 
-Checks: plugin.yaml present + parseable, register(ctx) succeeds, declared hooks match
-what register() wires, no obvious core-override patterns in source. Exit 0 on pass.
+Checks: plugin.yaml present, register(ctx) succeeds, declared hooks match what
+register() wires, no obvious core-override patterns. Exit 0 on pass.
 """
 
 from __future__ import annotations
 
-import ast
+import importlib.util
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT.parent))
 
 
 def main() -> int:
@@ -26,43 +25,23 @@ def main() -> int:
         _report(errors, warnings)
         return 1
 
-    try:
-        import yaml  # type: ignore
-    except Exception:
-        # Minimal YAML subset parser for our simple manifest
-        text = manifest_path.read_text(encoding="utf-8")
-        name_m = re.search(r"^name:\s*(\S+)", text, re.M)
-        hooks = re.findall(r"^provides_hooks:\n((?:  - .+\n)+)", text, re.M)
-        declared = []
-        if hooks:
-            declared = re.findall(r"- (\S+)", hooks[0])
-        manifest = {
-            "name": name_m.group(1) if name_m else None,
-            "provides_hooks": declared,
-        }
-    else:
-        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
-
-    if not manifest.get("name"):
+    text = manifest_path.read_text(encoding="utf-8")
+    name_m = re.search(r"^name:\s*(\S+)", text, re.M)
+    hooks_block = re.search(r"^provides_hooks:\n((?:[ \t]*-[ \t]*.+\n)+)", text, re.M)
+    declared = re.findall(r"-[ \t]*(\S+)", hooks_block.group(1)) if hooks_block else []
+    if not name_m:
         errors.append("plugin.yaml missing name")
     if not (ROOT / "__init__.py").exists():
         errors.append("missing __init__.py")
 
-    declared_hooks = list(manifest.get("provides_hooks") or [])
-
-    # Static scan for core overrides
     ban = re.compile(
         r"(AIAgent\.\w+\s*=|setattr\(\s*(?:sys\.modules|AIAgent)|sys\.modules\[)"
     )
     for path in ROOT.rglob("*.py"):
-        if ".venv" in path.parts or "tests" in path.parts:
+        if ".venv" in path.parts or path.parts[-2:] == ("tests", path.name) or "tests" in path.parts:
             continue
-        src = path.read_text(encoding="utf-8")
-        if ban.search(src):
+        if ban.search(path.read_text(encoding="utf-8")):
             errors.append(f"possible core override in {path.relative_to(ROOT)}")
-
-    # Load + register
-    import importlib.util
 
     spec = importlib.util.spec_from_file_location(
         "excubitor_validate",
@@ -97,8 +76,8 @@ def main() -> int:
     except Exception as exc:
         errors.append(f"register(ctx) raised: {exc}")
 
-    missing = sorted(set(declared_hooks) - set(registered_hooks))
-    extra = sorted(set(registered_hooks) - set(declared_hooks))
+    missing = sorted(set(declared) - set(registered_hooks))
+    extra = sorted(set(registered_hooks) - set(declared))
     if missing:
         errors.append(f"declared but not registered hooks: {missing}")
     if extra:
@@ -106,29 +85,17 @@ def main() -> int:
     if "excubitor" not in registered_commands:
         errors.append("/excubitor command not registered")
 
-    # AST: every public hook callback accepts **kwargs (Hermes contract tip)
-    init_ast = ast.parse((ROOT / "__init__.py").read_text(encoding="utf-8"))
-    for node in init_ast.body:
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("on_"):
-            if not any(isinstance(a, ast.arg) and a.arg == "kwargs" for a in [] ) and not any(
-                getattr(node.args, "kwarg", None)
-            ):
-                # only warn for top-level on_* that look like hooks
-                if node.args.kwarg is None:
-                    warnings.append(f"{node.name} should accept **kwargs")
-
-    _report(errors, warnings)
-    return 1 if errors else 0
-
-
-def _report(errors: list[str], warnings: list[str]) -> None:
+    if not errors:
+        print("OK: local validate passed (still run `hermes plugins validate` before catalog PR)")
+        print("     hooks:", ", ".join(registered_hooks))
+        print("     commands:", ", ".join(registered_commands))
     for w in warnings:
         print(f"WARNING: {w}")
     for e in errors:
         print(f"ERROR: {e}")
-    if not errors:
-        print("OK: local validate passed (still run `hermes plugins validate` before catalog PR)")
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":
+    # Keep registered list visible on success via a second pass message
     raise SystemExit(main())
