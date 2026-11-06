@@ -121,6 +121,19 @@ Set `reply_deadline_minutes: 0.5`, `watch_interval_seconds: 10`, `notifier: log`
 
 **Expect:** one alert titled `Excubitor: turn hung` (log line, or a single ntfy push). `/excubitor` → `alerts fired` ≥ 1.
 
+## Turn receipts
+
+When a turn ends, Excubitor writes a one-line receipt from its ledger: tool calls, duplicates dropped, loops and what was blocked, spend against the day cap, any cap veto, and idle or hang time. A receipt from the test suite:
+
+```
+Turn t_ab12 · telegram · 6 tool calls · looped 6× on web_search, blocked at #6 · spent $0.42 of $5 day cap · replied 21:09 (0s)
+```
+
+- `/excubitor receipt` shows the latest receipt. `/excubitor receipt <turn_id>` shows one turn (a prefix of the id works).
+- The dashboard status API includes it as `last_receipt`.
+- Only turns where something happened (a dedup, loop block, cap veto, or hang) go through your notifier. Clean turns are stored but stay quiet. A hang already sends its own alert, so its receipt is stored without a second ping.
+- Turn it off with `receipts_enabled: false`.
+
 ## Config
 
 Under `plugins.entries.excubitor.settings` (also drives Desktop → Settings → Plugins via `config_schema`):
@@ -133,6 +146,7 @@ Under `plugins.entries.excubitor.settings` (also drives Desktop → Settings →
 | `reply_deadline_minutes` | `5.0` | Hang-alert deadline |
 | `loop_threshold` | `6` | Base no-progress count (tightens with spend) |
 | `loop_approve_first` | `true` | First loop → approve; later → block |
+| `receipts_enabled` | `true` | Store a receipt per turn; notify only notable turns |
 | `notifier` | `log` | `log` \| `ntfy` \| `webhook` |
 | `ntfy_topic` | `""` | Topic when `notifier=ntfy` |
 | `webhook_url` | `""` | HTTPS URL when `notifier=webhook` |

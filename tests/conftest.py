@@ -63,4 +63,5 @@ def modules(excubitor, ledger_mod):
         "hashing": importlib.import_module(f"{PKG}.hashing"),
         "notify": importlib.import_module(f"{PKG}.notify"),
         "command": importlib.import_module(f"{PKG}.command"),
+        "receipt": importlib.import_module(f"{PKG}.receipt"),
     }

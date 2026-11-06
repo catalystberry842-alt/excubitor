@@ -140,6 +140,23 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
                 cost_usd REAL NOT NULL DEFAULT 0,
                 PRIMARY KEY (scope, scope_key, day)
             );
+            CREATE TABLE IF NOT EXISTS turn_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                turn_id TEXT NOT NULL,
+                ts REAL NOT NULL,
+                kind TEXT NOT NULL,
+                detail_json TEXT NOT NULL DEFAULT '{}'
+            );
+            CREATE INDEX IF NOT EXISTS idx_turn_events_turn ON turn_events(turn_id, ts);
+            CREATE TABLE IF NOT EXISTS receipts (
+                turn_id TEXT PRIMARY KEY,
+                created_at REAL NOT NULL,
+                text TEXT NOT NULL,
+                data_json TEXT NOT NULL DEFAULT '{}',
+                notable INTEGER NOT NULL DEFAULT 0,
+                notified INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_receipts_created ON receipts(created_at);
             CREATE TABLE IF NOT EXISTS stats (
                 key TEXT PRIMARY KEY,
                 value REAL NOT NULL DEFAULT 0
@@ -616,7 +633,23 @@ def snapshot_for_ui() -> dict[str, Any]:
             for a in alerts
         ],
         "chip_label": _chip_label(day_spend, day_cap, summary, overdue, level),
+        "last_receipt": _last_receipt_for_ui(),
     }
+
+
+def _last_receipt_for_ui() -> dict[str, Any] | None:
+    try:
+        r = get_receipt("")
+        if not r:
+            return None
+        return {
+            "turn_id": r["turn_id"],
+            "text": r["text"][:500],
+            "created_at": r["created_at"],
+            "notable": r["notable"],
+        }
+    except Exception:
+        return None
 
 
 def _chip_label(day_spend, day_cap, summary, overdue, level) -> str:
@@ -670,6 +703,8 @@ def prune_old(*, seen_ttl_hours: float = 168.0, turn_ttl_hours: float = 72.0) ->
             ids = [r["turn_id"] for r in old]
             for tid in ids:
                 conn.execute("DELETE FROM tool_calls WHERE turn_id = ?", (tid,))
+                conn.execute("DELETE FROM turn_events WHERE turn_id = ?", (tid,))
+                conn.execute("DELETE FROM receipts WHERE turn_id = ?", (tid,))
                 deleted["tool_calls"] += 1
             if ids:
                 conn.execute(
@@ -703,3 +738,110 @@ def cap_tool_rows(turn_id: str, max_rows: int = 500) -> None:
             )
     except Exception as exc:
         logger.debug("excubitor: cap_tool_rows failed: %s", exc)
+
+
+# ---------------------------------------------------------------- turn receipts
+
+
+def add_turn_event(turn_id: str, kind: str, **detail: Any) -> None:
+    """Record a per-turn event (dedup / loop_block / loop_approve / veto). Fail-open."""
+    if not turn_id:
+        return
+    try:
+        with _tx() as conn:
+            conn.execute(
+                "INSERT INTO turn_events(turn_id, ts, kind, detail_json) VALUES (?, ?, ?, ?)",
+                (turn_id, time.time(), kind, json.dumps(detail, ensure_ascii=False, default=str)),
+            )
+    except Exception as exc:
+        logger.debug("excubitor: add_turn_event failed: %s", exc)
+
+
+def turn_events(turn_id: str) -> list[dict[str, Any]]:
+    try:
+        rows = _conn().execute(
+            "SELECT ts, kind, detail_json FROM turn_events WHERE turn_id = ? ORDER BY ts, id",
+            (turn_id,),
+        ).fetchall()
+        out = []
+        for r in rows:
+            try:
+                detail = json.loads(r["detail_json"] or "{}")
+            except Exception:
+                detail = {}
+            out.append({"ts": r["ts"], "kind": r["kind"], **(detail if isinstance(detail, dict) else {})})
+        return out
+    except Exception:
+        return []
+
+
+def find_turn_by_message_key(message_key: str) -> dict[str, Any] | None:
+    if not message_key:
+        return None
+    try:
+        row = _conn().execute(
+            "SELECT * FROM turns WHERE message_key = ? ORDER BY opened_at DESC LIMIT 1",
+            (message_key,),
+        ).fetchone()
+        return dict(row) if row else None
+    except Exception:
+        return None
+
+
+def save_receipt(turn_id: str, text: str, data: dict[str, Any], *, notable: bool) -> None:
+    try:
+        with _tx() as conn:
+            conn.execute(
+                "INSERT INTO receipts(turn_id, created_at, text, data_json, notable, notified) "
+                "VALUES (?, ?, ?, ?, ?, 0) ON CONFLICT(turn_id) DO UPDATE SET "
+                "created_at = excluded.created_at, text = excluded.text, "
+                "data_json = excluded.data_json, notable = excluded.notable",
+                (turn_id, time.time(), text, json.dumps(data, ensure_ascii=False, default=str),
+                 1 if notable else 0),
+            )
+    except Exception as exc:
+        logger.debug("excubitor: save_receipt failed: %s", exc)
+
+
+def mark_receipt_notified(turn_id: str) -> None:
+    try:
+        with _tx() as conn:
+            conn.execute("UPDATE receipts SET notified = 1 WHERE turn_id = ?", (turn_id,))
+    except Exception as exc:
+        logger.debug("excubitor: mark_receipt_notified failed: %s", exc)
+
+
+def _receipt_row(row: Any) -> dict[str, Any]:
+    try:
+        data = json.loads(row["data_json"] or "{}")
+    except Exception:
+        data = {}
+    return {
+        "turn_id": row["turn_id"],
+        "created_at": row["created_at"],
+        "text": row["text"],
+        "notable": bool(row["notable"]),
+        "notified": bool(row["notified"]),
+        "data": data if isinstance(data, dict) else {},
+    }
+
+
+def get_receipt(turn_id: str = "") -> dict[str, Any] | None:
+    """Receipt for ``turn_id`` (exact, then prefix match), or the latest when empty."""
+    try:
+        conn = _conn()
+        if turn_id:
+            row = conn.execute("SELECT * FROM receipts WHERE turn_id = ?", (turn_id,)).fetchone()
+            if row is None:
+                row = conn.execute(
+                    "SELECT * FROM receipts WHERE substr(turn_id, 1, ?) = ? "
+                    "ORDER BY created_at DESC LIMIT 1",
+                    (len(turn_id), turn_id),
+                ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT * FROM receipts ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+        return _receipt_row(row) if row else None
+    except Exception:
+        return None
