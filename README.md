@@ -1,217 +1,162 @@
 # Excubitor
 
-[![ci](https://github.com/catalystberry842-alt/excubitor/actions/workflows/ci.yml/badge.svg)](https://github.com/catalystberry842-alt/excubitor/actions/workflows/ci.yml)
+**Night sentry for Hermes Agent.**
 
-**One ledger. Four jobs. Your Hermes night sentry.**
+Agents waste money and attention in four familiar ways: platforms re-deliver the same message and a second billable turn starts; the model calls the same tool with the same args and gets nothing new; spend creeps past what you meant to allow; a turn wedges with no reply and nobody notices. Excubitor watches every turn through **one SQLite ledger** and handles each:
 
-Excubitor is a Hermes Agent plugin that watches every turn through a single SQLite ledger:
+- **Intake** — drop inbound replays before a second turn opens
+- **Work** — block no-progress tool loops mid-turn
+- **Spend** — hard-veto when the day/session USD cap is hit
+- **Watch** — one alert if a turn stays silent past the deadline
 
-**dedup inbound replays → stop no-progress tool loops → enforce a spend cap → alert when a turn hangs.**
-
-> Default is offline-safe (`notifier: log`). Optional `ntfy` / `webhook` only if you opt in. Fail-open on every internal error — Excubitor never takes Hermes down with it.
-
-## Why it matters
-
-These are real Hermes issues, not marketing horror stories:
-
-| Source | What operators actually saw |
-|---|---|
-| [#143749](https://github.com/NousResearch/hermes-agent/issues/143749) | Cross-session **re-delivery** family across Feishu/WhatsApp/Telegram/Slack/… A replayed Slack root **re-ran three expensive scheduled jobs** (#131688). One Kanban board: **681 woken turns/week**, **547** of them pure noise (#136614). |
-| [#96247](https://github.com/NousResearch/hermes-agent/issues/96247) | **1,523 successful `tool_search` calls** in one session filled a 130k context and died on compression. Identical-call stubs fired **1,088 times** and were ignored — advisory prose, not a block. |
-| [#131145](https://github.com/NousResearch/hermes-agent/issues/131145) | First inbound turn **wedges forever**: typing forever, no provider call, no error, `active_agents` stuck after incomplete boot warm-up. |
-| [#71239](https://github.com/NousResearch/hermes-agent/issues/71239) | Telegram stays “connected” while the Application **dispatcher is dead** — silent no-reply. |
-
-Excubitor does **not** patch those core bugs. It is a plugin-side night sentry: durable inbound skip when hooks fire, mid-turn loop blocks, budget vetoes, and one hang alert — all drawn from the same ledger.
-
-## How it works
-
-```mermaid
-flowchart LR
-  inbound[Inbound message] --> intake[Intake<br/>pre_gateway_dispatch]
-  intake -->|new| ledger[(Turn ledger<br/>plugin_db)]
-  intake -->|duplicate| drop[skip]
-  ledger --> work[Work<br/>pre/post_tool_call]
-  ledger --> spend[Spend<br/>post_api_request / pre_llm_call]
-  ledger --> watch[Watch<br/>deadline scanner]
-  work -->|no-progress loop| block[approve / block]
-  spend -->|over cap| veto[veto turn / block tool]
-  watch -->|no reply past deadline| alert[ntfy / webhook / log]
+```text
+inbound → Intake → ledger → Work / Spend / Watch
+                ↘ duplicate? skip
+                ↘ loop?      block
+                ↘ over cap?  veto
+                ↘ hung?      alert (log / ntfy / webhook)
 ```
 
-| Stage | Hook(s) | Example |
-|---|---|---|
-| **Intake** | `pre_gateway_dispatch` | Same webhook `X-GitHub-Delivery` twice → second hit skipped; key survives gateway restart in `seen_messages`. |
-| **Work** | `pre_tool_call`, `post_tool_call` | Model repeats `terminal` with `echo same-loop` → after threshold, `action: block` mid-turn. |
-| **Spend** | `post_api_request`, `pre_llm_call`, `pre_tool_call` | Day spend above a tiny cap → next turn: `excubitor: day budget exhausted ($1.0000 / $0.00)`. |
-| **Watch** | background + `agent_loop_stopped` | Open turn past deadline → one `Excubitor: turn hung` alert (verified on ntfy.sh). |
+Fail-open on every hook — an internal error never takes Hermes down. Default notifier is `log` (offline). Optional `ntfy` / `webhook` only if you opt in. Requires Hermes `>=0.21.0`.
 
-## 30-second quickstart
+## Test it in 2 minutes
+
+Hermes must already be on your PATH (`hermes --version`).
 
 ```bash
-# Hermes must already be installed (`hermes --version`)
+git clone https://github.com/catalystberry842-alt/excubitor.git
+cd excubitor
+mkdir -p ~/.hermes/plugins
+ln -sfn "$(pwd)" ~/.hermes/plugins/excubitor
+hermes plugins enable excubitor
+hermes plugins doctor excubitor --ci
+hermes plugins validate .
+```
+
+Expected: doctor reports `OK` with **7 hooks**, validate ends with **Validation passed**.
+
+Or, when Hermes’s package manager can reach the network:
+
+```bash
 hermes plugins install catalystberry842-alt/excubitor
 hermes plugins enable excubitor
 hermes plugins doctor excubitor --ci
 ```
 
-Or while developing from a clone:
+Use `owner/repo` or a full `https://github.com/...git` URL — not `github:owner/repo` (that resolves to the wrong host).
+
+Unit tests (no live gateway needed):
 
 ```bash
-git clone https://github.com/catalystberry842-alt/excubitor.git
-mkdir -p ~/.hermes/plugins
-ln -sfn "$(pwd)/excubitor" ~/.hermes/plugins/excubitor
-hermes plugins enable excubitor
-hermes plugins doctor excubitor --ci
+pip install pytest ruff
+pytest -q --ignore=tests/test_hermes_live.py
+# expect: 37 passed
+ruff check .
 ```
 
-> **Note:** use `owner/repo` (or a full `https://github.com/...git` URL). The `github:owner/repo` shorthand is **wrong** for current Hermes — it resolves to `github.com/github:owner/repo`.
+Then in any Hermes chat: `/excubitor` — you should see spend, duplicates, loops, alerts, and open turns.
 
-Optional phone alerts: set `notifier: ntfy` + a **random** topic, install the [ntfy](https://ntfy.sh) app, subscribe. See [TESTING.md](TESTING.md).
+## Try each guard
 
-## What you'll see
+Temporarily tighten knobs under `plugins.entries.excubitor.settings` in `~/.hermes/config.yaml`, then reload/restart the gateway.
 
-### `/excubitor` status (live shape)
+### 1. Intake — drop inbound replays
 
-```text
-Excubitor status
-  enabled: True
-  day: 2026-11-05  spend $0.0072 / $5.00
-  session cap: $2.00
-  duplicates dropped: 0
-  loops stopped: 0
-  cap vetoes: 0
-  alerts fired: 0
-  estimated $ tracked: $0.0072
-  open turns: 2
-  reply deadline: 5.0 min
-  loop threshold: 6 (tightens with spend)
-  notifier: log
+Enable a loopback webhook (secret below is intentionally insecure, local only):
+
+```yaml
+platforms:
+  webhook:
+    enabled: true
+    extra:
+      host: "127.0.0.1"
+      port: 18644
+      secret: "INSECURE_NO_AUTH"
+      routes:
+        probe:
+          secret: "INSECURE_NO_AUTH"
+          prompt: "Say PONG. No tools. {{__raw__}}"
+          deliver: log
 ```
 
-### Loop block (live)
-
-```text
-excubitor: no-progress loop on terminal (stagnant=3, threshold=3, spend_ratio=0.01, turn_cost=$0.0310)
+```bash
+hermes gateway run
+# other terminal:
+DELIVERY="test-$(date +%s)"
+curl -sS -X POST "http://127.0.0.1:18644/webhooks/probe" \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Delivery: $DELIVERY" \
+  -H "X-GitHub-Event: ping" \
+  -d '{"zen":"excubitor"}'
+curl -sS -X POST "http://127.0.0.1:18644/webhooks/probe" \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Delivery: $DELIVERY" \
+  -H "X-GitHub-Event: ping" \
+  -d '{"zen":"excubitor"}'
 ```
 
-### Cap veto (live)
+**Expect:** first POST accepted; second is `duplicate` / skipped. `/excubitor` → `duplicates dropped` ≥ 1. Key survives a gateway restart in `~/.hermes/plugin-data/excubitor/data.db`.
 
-```text
-excubitor: day budget exhausted ($1.0000 / $0.00)
-```
+### 2. Work — stop no-progress loops
 
-### Desktop status chip (live shape)
+Set `loop_threshold: 3`, `loop_approve_first: false`. In chat with tools on:
 
-```text
-🛡 $0.07/$5          ← ok (accent)
-🛡 $4.20/$5 · 2 open ← warning (amber) when near cap / open turns
-🛡 ⚠ $0.40/$5 · hang ← alert (red) when a turn hung
-```
+> Call the terminal tool with exactly `echo same-loop` five times in a row, then say DONE.
 
-Click opens the ledger pane (duplicates / loops / vetoes / recent alerts).
+**Expect:** a block like  
+`excubitor: no-progress loop on terminal (stagnant=3, threshold=3, …)`  
+and `/excubitor` → `loops stopped` ≥ 1.
 
-### Hang alert on ntfy (live)
+### 3. Spend — USD day cap
 
-```text
-title:   Excubitor: turn hung
-message: excubitor: stuck after 6 loop stop(s), no reply in 1.1 min, $0.40 spent,
-         ledger note: stuck after 6 search loops
-```
+Set `day_budget_usd: 0.0001`, reload, send any short message.
 
-## vs related plugins
+**Expect:**  
+`excubitor: day budget exhausted ($… / $0.00)`  
+Restore a normal budget after.
 
-| Plugin | What it does | What Excubitor adds |
-|---|---|---|
-| [degeneracy-guard](https://github.com/simin-yuan/hermes-degeneracy-guard) | Asks before a tool call whose **args look like a repetition loop**; can rewrite degenerate stream output | Hard mid-turn **block** on same-tool+args with **no new result hashes**, plus spend-tightened threshold — one ledger shared with dedup/cap/hang |
-| [usage-guard](https://github.com/mister-ideas/usage-guard) | Refuses provider calls when a **subscription usage window** is exhausted | **USD spend cap** estimated from API usage (day + session), not subscription percent |
-| [tokenwatch](https://github.com/0xBernard/tokenwatch) | Token thresholds, notify, freeze tools/gateway at limits | Per-turn hang deadline + inbound **message-id dedup** + no-progress loop breaker on one spine |
+### 4. Watch — silent-hang alarm
 
-They can coexist. Excubitor's pitch is the **single per-turn ledger** covering intake → work → spend → watch.
+Set `reply_deadline_minutes: 0.5`, `watch_interval_seconds: 10`, `notifier: log` (or `ntfy` + a random topic). Start a turn that never replies; wait ~1 minute.
+
+**Expect:** one alert titled `Excubitor: turn hung` (log line, or a single ntfy push). `/excubitor` → `alerts fired` ≥ 1.
 
 ## Config
 
-Under `plugins.entries.excubitor.settings` (also drives the Desktop Settings → Plugins form via `config_schema`):
+Under `plugins.entries.excubitor.settings` (also drives Desktop → Settings → Plugins via `config_schema`):
 
 | Key | Default | Meaning |
 |---|---|---|
 | `enabled` | `true` | Master kill switch |
 | `day_budget_usd` | `5.0` | Day spend cap (hard veto) |
 | `session_budget_usd` | `2.0` | Per-session cap |
-| `reply_deadline_minutes` | `5.0` | Hang alert deadline |
+| `reply_deadline_minutes` | `5.0` | Hang-alert deadline |
 | `loop_threshold` | `6` | Base no-progress count (tightens with spend) |
-| `loop_approve_first` | `true` | First loop → human `approve`; later → `block` |
+| `loop_approve_first` | `true` | First loop → approve; later → block |
 | `notifier` | `log` | `log` \| `ntfy` \| `webhook` |
 | `ntfy_topic` | `""` | Topic when `notifier=ntfy` |
 | `webhook_url` | `""` | HTTPS URL when `notifier=webhook` |
-| `price_table` | `{}` | Optional model → `{input_per_mTok, output_per_mTok}` |
 | `watch_interval_seconds` | `30` | Background scan period |
-| `seen_ttl_hours` | `168` | Prune dedup keys older than this |
-| `turn_ttl_hours` | `72` | Prune closed turns older than this |
-| `max_tool_rows_per_turn` | `500` | Cap tool history rows per turn |
 
-## Evidence
+Kill switch: `enabled: false` or `hermes plugins disable excubitor`.
 
-Independent clean recheck (fresh clone, fresh Hermes `main`, fresh venv/HERMES_HOME) plus earlier live runs — artifacts under [`docs/evidence/`](docs/evidence/), no secrets:
+## Desktop status chip (optional)
 
-| Scenario | Result | Artifact |
-|---|---|---|
-| A webhook duplicate + restart | PASS | `*_a_webhook_dup.json` |
-| B no-progress loop block | PASS | `*_b_loop.json` |
-| C $ cap veto | PASS | `*_c_cap.json` |
-| D hang → ntfy once | PASS | `*_d_hang.json`, `ntfy_poll_verify*.ndjson` |
-| E `/excubitor` status | PASS | `*_e_status.json` |
-| F fail-open | PASS | `*_f_failopen.json` |
-| G dedup persistence | PASS (via A) | `seen_messages` row after restart |
+Unified package: `desktop/plugin.js` + `dashboard/plugin_api.py`.
 
-Unit: **32** tests, **~71%** line coverage, ruff clean, CI green on `main`.
+- Status-bar chip: day spend vs cap, open-turn count, color by level (`ok` / `warning` / `alert`)
+- Click → ledger pane: duplicates, loops, vetoes, alerts
+- Enable the **Desktop** half under **Capabilities → Plugins** (keep the agent plugin enabled so `/api/plugins/excubitor/status` mounts)
 
-Security/quality write-up: [AUDIT.md](AUDIT.md). Reproduce: [TESTING.md](TESTING.md). Demo beat sheet: [DEMO.md](DEMO.md).
+CLI/gateway alone still get hooks + `/excubitor` — Desktop is optional polish.
 
-## Limitations (honest)
+## Limitations
 
-- **`event.internal` bypasses gateway hooks** — Excubitor never sees those paths.
-- **Detects hangs; does not fix them** — you still restart / clear the wedge.
-- **Cost is estimated** unless the hook payload carries an explicit USD figure.
+- `event.internal` bypasses gateway hooks — Excubitor never sees those paths.
+- Detects hangs; does not unwedge them — you still restart / clear the stuck turn.
+- Cost is estimated unless the hook payload carries an explicit USD figure.
 - CLI/TUI may not fire `pre_gateway_dispatch`; those turns open the ledger later (no inbound dedup there).
-- Hermes may also keep its own delivery idempotency; Excubitor's durable `seen_messages` is the plugin-side belt when hooks fire with a stable `message_id`.
-- Desktop UI needs Hermes Desktop (or Webapp) with the plugin Desktop half enabled; CLI/gateway alone still get hooks + `/excubitor`.
-
-## Desktop status chip
-
-Unified package: `desktop/plugin.js` + `dashboard/plugin_api.py` (API-only, no dashboard tab).
-
-| Surface | What you get |
-|---|---|
-| Status-bar chip | Day spend vs cap, open-turn count, color by level (`ok` / `warning` near cap or open turns / `alert` on hang) |
-| Click → pane | Ledger summary: duplicates, loops stopped, cap vetoes, estimated $ tracked, recent alerts |
-| Settings → Plugins | Automatic form from `config_schema` (already present) |
-
-Enable the **Desktop** half under **Capabilities → Plugins** (and keep the agent plugin enabled so `/api/plugins/excubitor/status` mounts). Works without Desktop — hooks + `/excubitor` are unchanged.
-
-![Excubitor Desktop status chip preview](docs/evidence/desktop_chip.png)
-
-> **Preview mock** (labeled in-image): Hermes Desktop Electron could not be built on the verification box (`node-pty` needs `make`; apt mirrors unavailable). The chip/pane chrome matches `desktop/plugin.js`; numbers come from a live `GET /api/plugins/excubitor/status` (see `docs/evidence/desktop_api_status.json`). `hermes plugins validate` reports `desktop surface` OK.
-
-## Roadmap
-
-- [x] Desktop status-bar chip + ledger pane (`desktop/plugin.js`)
-- [ ] Optional rich Dashboard tab (beyond the hidden API mount)
-- [ ] Richer `/excubitor` subcommands (`reset-day`, `open-turns`, `mute`)
-- [ ] Catalog PR to `NousResearch/hermes-agent` `plugin-catalog/excubitor.yaml`
-
-## FAQ
-
-**Will this block Hermes if the plugin crashes?**  
-No. Every hook is wrapped fail-open; exceptions are swallowed and logged at debug.
-
-**Does dedup survive a gateway restart?**  
-Yes — keys live in Hermes `plugin-data/excubitor/data.db`. Live test A confirmed a `seen_messages` row after restart.
-
-**Is ntfy private?**  
-Public topics on ntfy.sh are world-readable. Use a long random topic name; treat it like a capability URL.
-
-**Can I turn it off quickly?**  
-Set `enabled: false` or `hermes plugins disable excubitor`.
+- Public ntfy topics are world-readable — use a long random topic.
 
 ## License
 
