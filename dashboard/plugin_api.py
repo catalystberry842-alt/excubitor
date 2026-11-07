@@ -95,6 +95,7 @@ def _snapshot() -> dict[str, Any]:
             "cap_vetoes": 0,
             "alerts": 0,
             "recent_alerts": [],
+            "last_receipt": None,
             "enabled": True,
         }
 

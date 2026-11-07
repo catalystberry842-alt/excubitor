@@ -107,6 +107,9 @@ def on_post_llm_call(session_id="", turn_id="", task_id="", **kwargs):
         )
         if ledger.get_turn(tid):
             ledger.mark_reply(tid, status="replied")
+            from . import receipt
+
+            receipt.finalize(tid, cfg)
         return None
     except Exception as exc:
         logger.debug("excubitor: post_llm_call failed open: %s", exc)
@@ -148,6 +151,7 @@ def on_pre_llm_call(
         if reason:
             ledger.bump_stat("cap_vetoes")
             ledger.set_turn_reason(tid, reason)
+            ledger.add_turn_event(tid, "veto", reason=reason[:200])
             return {"action": "block", "message": reason}
         return None
     except Exception as exc:
@@ -171,6 +175,7 @@ def on_pre_tool_call_spend(
         )
         ledger.bump_stat("cap_vetoes")
         ledger.set_turn_reason(tid, reason)
+        ledger.add_turn_event(tid, "veto", tool=str(tool_name or ""), reason=reason[:200])
         return {"action": "block", "message": reason + f" (blocked tool {tool_name})"}
     except Exception as exc:
         logger.debug("excubitor: pre_tool_call spend failed open: %s", exc)

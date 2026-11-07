@@ -10,7 +10,25 @@ from . import config, ledger
 logger = logging.getLogger("excubitor.command")
 
 
+def receipt_text(turn_id: str = "") -> str:
+    try:
+        r = ledger.get_receipt(turn_id.strip())
+        if not r:
+            return (
+                f"Excubitor: no receipt for turn {turn_id.strip()}"
+                if turn_id.strip()
+                else "Excubitor: no turn receipts yet"
+            )
+        return f"Excubitor receipt\n  {r['text']}"
+    except Exception as exc:
+        logger.debug("excubitor: receipt command failed: %s", exc)
+        return "Excubitor receipt unavailable (fail-open)."
+
+
 def status_text(raw_args: str = "") -> str:
+    parts = (raw_args or "").strip().split(None, 1)
+    if parts and parts[0].lower() in ("receipt", "receipts", "r"):
+        return receipt_text(parts[1] if len(parts) > 1 else "")
     try:
         cfg = config.settings()
         summary = ledger.summarize()
@@ -31,9 +49,14 @@ def status_text(raw_args: str = "") -> str:
             f"  loop threshold: {cfg.get('loop_threshold')} (tightens with spend)",
             f"  notifier: {cfg.get('notifier')}",
         ]
-        arg = (raw_args or "").strip().lower()
-        if arg in ("help", "?"):
+        arg = (raw_args or "").strip()
+        if arg.lower() in ("help", "?"):
             lines.append("  usage: /excubitor  — show this summary")
+            lines.append("         /excubitor receipt [turn_id]  — latest turn receipt, or one turn")
+        else:
+            last = ledger.get_receipt("")
+            if last:
+                lines.append(f"  last receipt: {last['text']}")
         return "\n".join(lines)
     except Exception as exc:
         logger.debug("excubitor: status failed: %s", exc)

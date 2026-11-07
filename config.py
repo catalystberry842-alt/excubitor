@@ -21,6 +21,7 @@ DEFAULTS: dict[str, Any] = {
     "turn_ttl_hours": 72.0,  # 3 days
     "max_tool_rows_per_turn": 500,
     "prune_every_n_ops": 50,
+    "receipts_enabled": True,
 }
 
 # Conservative USD per million tokens for common models when hooks give tokens but no $ figure.
@@ -80,6 +81,7 @@ def settings() -> dict[str, Any]:
         out["prune_every_n_ops"] = max(1, int(out.get("prune_every_n_ops") or 50))
         out["loop_approve_first"] = bool(out["loop_approve_first"])
         out["enabled"] = bool(out["enabled"])
+        out["receipts_enabled"] = bool(out.get("receipts_enabled", True))
         notifier = str(out.get("notifier") or "log").strip().lower()
         out["notifier"] = notifier if notifier in ("log", "ntfy", "webhook") else "log"
         out["ntfy_topic"] = str(out.get("ntfy_topic") or "").strip()
