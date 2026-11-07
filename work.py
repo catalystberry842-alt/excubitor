@@ -98,11 +98,13 @@ def evaluate_loop(
     # First detection may ask the human; later or burning always blocks.
     approve_first = bool(cfg.get("loop_approve_first", True))
     if approve_first and count <= 1 and not burning:
+        ledger.add_turn_event(turn_id, "loop_approve", tool=tool_name, stagnant=stagnant, call_no=len(history))
         return {
             "action": "approve",
             "message": reason + " — confirm to allow one more attempt.",
             "rule_key": f"excubitor:loop:{tool_name}",
         }
+    ledger.add_turn_event(turn_id, "loop_block", tool=tool_name, stagnant=stagnant, call_no=len(history))
     return {"action": "block", "message": reason}
 
 

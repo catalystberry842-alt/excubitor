@@ -43,6 +43,11 @@ config_schema:
     default: true
     label: Ask before first loop block
     description: "On the first no-progress detection, escalate via approve (human gate) instead of hard-blocking. Later / high-spend detections always block."
+  receipts_enabled:
+    type: bool
+    default: true
+    label: Turn receipts
+    description: "Store a plain-English receipt for each finished turn. Only turns with a dedup, loop block, cap veto, or hang are sent through the notifier."
   notifier:
     type: str
     choices: [log, ntfy, webhook]

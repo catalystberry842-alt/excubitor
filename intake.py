@@ -28,6 +28,22 @@ def _source_bits(event: Any) -> tuple[str, str, str | None, Any]:
     return str(platform), str(chat_id), (str(message_id) if message_id else None), raw
 
 
+def _note_dup(key: str) -> None:
+    """Attach the dropped duplicate to the original turn; refresh its receipt if closed."""
+    try:
+        turn = ledger.find_turn_by_message_key(key)
+        if not turn:
+            return
+        tid = str(turn["turn_id"])
+        ledger.add_turn_event(tid, "dedup", message_key=key)
+        if turn.get("status") != "open":
+            from . import receipt
+
+            receipt.finalize(tid)
+    except Exception as exc:
+        logger.debug("excubitor: dedup note failed open: %s", exc)
+
+
 def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwargs):
     """Drop duplicate inbound messages; open a turn ledger entry for new ones."""
     try:
@@ -43,6 +59,7 @@ def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwar
         key = mk_message_key(platform, chat_id, message_id, raw)
         if ledger.already_seen(key):
             ledger.bump_stat("duplicates_dropped")
+            _note_dup(key)
             logger.info("excubitor: skipping duplicate inbound %s", key)
             return {"action": "skip", "reason": f"excubitor: duplicate message {key}"}
         inserted = ledger.mark_seen(
@@ -50,6 +67,7 @@ def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwar
         )
         if not inserted:
             ledger.bump_stat("duplicates_dropped")
+            _note_dup(key)
             return {"action": "skip", "reason": f"excubitor: duplicate message {key}"}
         turn_id = f"gw:{key}:{uuid.uuid4().hex[:8]}"
         ledger.open_turn(

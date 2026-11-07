@@ -69,6 +69,17 @@ class Watcher:
                     },
                 )
                 ledger.mark_alert_fired(str(turn["turn_id"]), reason)
+                try:
+                    from . import receipt
+
+                    tid = str(turn["turn_id"])
+                    ledger.add_turn_event(tid, "hang")
+                    # The hang alert above already pinged; store the receipt without a 2nd ping.
+                    text = receipt.finalize(tid, cfg, notify=False)
+                    if text:
+                        logger.info("excubitor receipt: %s", text)
+                except Exception as exc:
+                    logger.debug("excubitor: hang receipt failed open: %s", exc)
                 fired.append(str(turn["turn_id"]))
             except Exception as exc:
                 logger.debug("excubitor: alert for %s failed open: %s", turn.get("turn_id"), exc)
@@ -124,6 +135,9 @@ def on_agent_loop_stopped(session_id="", reason="", **kwargs):
             note = f"agent_loop_stopped: {reason or 'interrupted'}"
             ledger.set_turn_reason(str(turn["turn_id"]), note)
             ledger.mark_reply(str(turn["turn_id"]), status="stopped")
+            from . import receipt
+
+            receipt.finalize(str(turn["turn_id"]), cfg)
         return None
     except Exception as exc:
         logger.debug("excubitor: agent_loop_stopped failed open: %s", exc)
