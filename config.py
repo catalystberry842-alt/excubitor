@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -14,6 +16,7 @@ DEFAULTS: dict[str, Any] = {
     "notifier": "log",
     "ntfy_topic": "",
     "webhook_url": "",
+    "allow_private_webhooks": False,
     "price_table": {},
     "watch_interval_seconds": 30.0,
     "enabled": True,
@@ -69,29 +72,48 @@ def settings() -> dict[str, Any]:
         if val is None:
             val = default
         out[key] = val
-    # Normalize types gently.
-    try:
-        out["day_budget_usd"] = float(out["day_budget_usd"])
-        out["session_budget_usd"] = float(out["session_budget_usd"])
-        out["reply_deadline_minutes"] = float(out["reply_deadline_minutes"])
-        out["loop_threshold"] = max(2, int(out["loop_threshold"]))
-        out["watch_interval_seconds"] = max(5.0, float(out["watch_interval_seconds"]))
-        out["seen_ttl_hours"] = max(1.0, float(out.get("seen_ttl_hours") or 168.0))
-        out["text_dedup_seconds"] = max(1.0, float(out.get("text_dedup_seconds") or 120.0))
-        out["turn_ttl_hours"] = max(1.0, float(out.get("turn_ttl_hours") or 72.0))
-        out["max_tool_rows_per_turn"] = max(50, int(out.get("max_tool_rows_per_turn") or 500))
-        out["prune_every_n_ops"] = max(1, int(out.get("prune_every_n_ops") or 50))
-        out["loop_approve_first"] = bool(out["loop_approve_first"])
-        out["enabled"] = bool(out["enabled"])
-        out["receipts_enabled"] = bool(out.get("receipts_enabled", True))
-        notifier = str(out.get("notifier") or "log").strip().lower()
-        out["notifier"] = notifier if notifier in ("log", "ntfy", "webhook") else "log"
-        out["ntfy_topic"] = str(out.get("ntfy_topic") or "").strip()
-        out["webhook_url"] = str(out.get("webhook_url") or "").strip()
-        pt = out.get("price_table") or {}
-        out["price_table"] = dict(pt) if isinstance(pt, Mapping) else {}
-    except Exception:
-        return dict(DEFAULTS)
+    # Validate independently: one typo must never re-enable a disabled plugin.
+    for key, default in DEFAULTS.items():
+        try:
+            value = out[key]
+            if isinstance(default, bool):
+                if isinstance(value, str):
+                    if value.lower() not in ("true", "false"):
+                        raise ValueError("expected true/false")
+                    value = value.lower() == "true"
+                if not isinstance(value, bool):
+                    raise ValueError("expected boolean")
+            elif isinstance(default, (int, float)):
+                value = int(value) if isinstance(default, int) else float(value)
+                if not math.isfinite(value) or value < 0:
+                    raise ValueError("expected finite non-negative number")
+                floors = {
+                    "loop_threshold": 2,
+                    "watch_interval_seconds": 5.0,
+                    "seen_ttl_hours": 1.0,
+                    "text_dedup_seconds": 1.0,
+                    "turn_ttl_hours": 1.0,
+                    "max_tool_rows_per_turn": 50,
+                    "prune_every_n_ops": 1,
+                }
+                value = max(floors.get(key, 0), value)
+            elif isinstance(default, dict):
+                if not isinstance(value, Mapping):
+                    raise ValueError("expected mapping")
+                value = dict(value)
+            else:
+                value = str(value).strip()
+                if key == "notifier":
+                    value = value.lower()
+                    if value not in ("log", "ntfy", "webhook"):
+                        raise ValueError("unknown notifier")
+            out[key] = value
+        except (ValueError, TypeError, OverflowError):
+            logging.getLogger("excubitor.config").warning(
+                "excubitor: invalid setting %s; using its default", key
+            )
+            out[key] = default
+
     return out
 
 
@@ -115,7 +137,8 @@ def price_for(model: str | None, overrides: Mapping[str, Any] | None = None) -> 
     if name in table:
         return dict(table[name])
     # Prefix / substring soft match (e.g. "anthropic/claude-sonnet-4-20250514").
-    for key, prices in table.items():
+    for key in sorted(table, key=len, reverse=True):
+        prices = table[key]
         if key == "default":
             continue
         if key in name or name.endswith(key):
@@ -140,3 +163,9 @@ def estimate_cost_usd(
         )
     except Exception:
         return 0.0
+
+
+def budget(cfg: Mapping[str, Any], key: str, default: float) -> float:
+    """Only a missing/None cap uses the default; zero is an intentional hard stop."""
+    value = cfg.get(key)
+    return float(default if value is None else value)

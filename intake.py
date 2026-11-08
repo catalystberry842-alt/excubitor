@@ -73,7 +73,7 @@ def _note_dup(key: str) -> None:
 
 
 def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwargs):
-    """Drop inbound replays already admitted. Do not open a turn or mark seen here."""
+    """Reserve deliveries atomically; only admission creates durable seen/turn rows."""
     try:
         cfg = config.settings()
         if not cfg.get("enabled", True):
@@ -85,7 +85,7 @@ def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwar
             return None
         platform, chat_id, message_id, raw = _source_bits(event)
         key = mk_message_key(platform, chat_id, message_id, raw)
-        if ledger.already_seen(key):
+        if not ledger.claim_dispatch(key):
             ledger.bump_stat("duplicates_dropped")
             _note_dup(key)
             logger.info("excubitor: skipping duplicate inbound %s", key)
@@ -116,12 +116,9 @@ def on_post_gateway_admission(
         if not mid and raw is None:
             return None
         key = mk_message_key(plat, chat_id, mid, raw)
-        inserted = ledger.mark_seen(
-            key, platform=plat, chat_id=chat_id, message_id=mid or ""
-        )
+        inserted = ledger.mark_seen(key, platform=plat, chat_id=chat_id, message_id=mid or "")
         if not inserted:
-            ledger.bump_stat("duplicates_dropped")
-            _note_dup(key)
+            # Admission observers cannot veto traffic; do not count it as dropped.
             return None
         turn_id = f"gw:{key}:{uuid.uuid4().hex[:8]}"
         ledger.open_turn(

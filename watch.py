@@ -50,6 +50,8 @@ class Watcher:
         for turn in ledger.overdue_open_turns():
             try:
                 reason = self._reason_for(turn)
+                if not ledger.mark_alert_fired(str(turn["turn_id"]), reason):
+                    continue
                 title = "Excubitor: turn hung"
                 body = reason
                 send_alert(
@@ -68,7 +70,6 @@ class Watcher:
                         "reason": reason,
                     },
                 )
-                ledger.mark_alert_fired(str(turn["turn_id"]), reason)
                 try:
                     from . import receipt
 

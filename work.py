@@ -56,8 +56,8 @@ def spend_ratio_for_turn(turn: dict[str, Any], cfg: dict[str, Any], session_id: 
         if (session_id or turn.get("session_id"))
         else float(turn.get("cost_usd") or 0.0)
     )
-    day_cap = max(1e-9, float(cfg.get("day_budget_usd") or 5.0))
-    sess_cap = max(1e-9, float(cfg.get("session_budget_usd") or 2.0))
+    day_cap = max(1e-9, float(config.budget(cfg, "day_budget_usd", 5.0)))
+    sess_cap = max(1e-9, float(config.budget(cfg, "session_budget_usd", 2.0)))
     return max(
         day_spend / day_cap, sess_spend / sess_cap, float(turn.get("cost_usd") or 0.0) / sess_cap
     )
@@ -74,7 +74,7 @@ def evaluate_loop(
     """Return a pre_tool_call directive when a no-progress loop is detected, else None."""
     cfg = cfg or config.settings()
     turn = ledger.get_turn(turn_id) or {}
-    ah = args_hash(args if isinstance(args, dict) else {})
+    ah = args_hash(args)
     # Record this pre-call first so history includes it.
     ledger.record_tool_pre(turn_id, tool_name, ah)
     history = ledger.tool_history(turn_id, tool_name, ah)
@@ -88,8 +88,6 @@ def evaluate_loop(
         trip = max(2, threshold // 2)
     if stagnant < trip:
         return None
-    count = ledger.bump_loop(turn_id, blocked=True)
-    ledger.bump_stat("loops_stopped")
     reason = (
         f"excubitor: no-progress loop on {tool_name} "
         f"(stagnant={stagnant}, threshold={trip}, spend_ratio={ratio:.2f}, turn_cost=${float(turn.get('cost_usd') or 0):.4f})"
@@ -97,14 +95,25 @@ def evaluate_loop(
     ledger.set_turn_reason(turn_id, reason)
     # First detection may ask the human; later or burning always blocks.
     approve_first = bool(cfg.get("loop_approve_first", True))
-    if approve_first and count <= 1 and not burning:
-        ledger.add_turn_event(turn_id, "loop_approve", tool=tool_name, stagnant=stagnant, call_no=len(history))
+    already_asked = any(
+        e["kind"] == "loop_approve" and e.get("tool") == tool_name
+        for e in ledger.turn_events(turn_id)
+    )
+    approving = approve_first and not already_asked and not burning
+    ledger.bump_loop(turn_id, blocked=not approving)
+    if approving:
+        ledger.add_turn_event(
+            turn_id, "loop_approve", tool=tool_name, stagnant=stagnant, call_no=len(history)
+        )
         return {
             "action": "approve",
             "message": reason + " — confirm to allow one more attempt.",
             "rule_key": f"excubitor:loop:{tool_name}",
         }
-    ledger.add_turn_event(turn_id, "loop_block", tool=tool_name, stagnant=stagnant, call_no=len(history))
+    ledger.bump_stat("loops_stopped")
+    ledger.add_turn_event(
+        turn_id, "loop_block", tool=tool_name, stagnant=stagnant, call_no=len(history)
+    )
     return {"action": "block", "message": reason}
 
 
@@ -126,7 +135,7 @@ def on_post_tool_call(
                 deadline_minutes=cfg["reply_deadline_minutes"],
                 meta={"opened_by": "post_tool_call"},
             )
-        ah = args_hash(args if isinstance(args, dict) else {})
+        ah = args_hash(args)
         rh = result_hash(result)
         ledger.record_tool_post(tid, str(tool_name or ""), ah, rh)
         return None

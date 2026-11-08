@@ -8,6 +8,7 @@ import os
 import sqlite3
 import threading
 import time
+import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -21,6 +22,7 @@ PLUGIN_NAME = "excubitor"
 _local = threading.local()
 _test_db_path: Path | None = None
 _schema_lock = threading.Lock()
+_memory_uri = f"file:excubitor-{os.getpid()}-{uuid.uuid4().hex}"
 
 
 def use_test_db(path: Path | str | None) -> None:
@@ -59,7 +61,12 @@ def _open_conn() -> sqlite3.Connection:
     except Exception as exc:
         # Last-resort: process-local ephemeral DB so hooks still fail-open with state.
         logger.debug("excubitor: plugin_db unavailable (%s); using ephemeral memory db", exc)
-        conn = sqlite3.connect(":memory:", check_same_thread=False)
+        conn = sqlite3.connect(
+            f"{_memory_uri}-{hash(_db_identity())}?mode=memory&cache=shared",
+            uri=True,
+            check_same_thread=False,
+            timeout=10,
+        )
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -97,6 +104,18 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
     with _schema_lock:
         conn.executescript(
             """
+            CREATE TABLE IF NOT EXISTS dispatch_claims (
+                message_key TEXT PRIMARY KEY,
+                expires_at REAL NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS turn_aliases (
+                alias TEXT PRIMARY KEY,
+                turn_id TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS cost_cursors (
+                session_id TEXT PRIMARY KEY,
+                total REAL NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS seen_messages (
                 message_key TEXT PRIMARY KEY,
                 first_seen_at REAL NOT NULL,
@@ -225,9 +244,7 @@ def already_seen(message_key: str) -> bool:
             age = time.time() - float(row["first_seen_at"] or 0)
             if age > max(1.0, ttl):
                 with _tx() as conn:
-                    conn.execute(
-                        "DELETE FROM seen_messages WHERE message_key = ?", (message_key,)
-                    )
+                    conn.execute("DELETE FROM seen_messages WHERE message_key = ?", (message_key,))
                 return False
         return True
     except Exception as exc:
@@ -247,6 +264,7 @@ def mark_seen(
                 (message_key, time.time(), platform, chat_id, message_id),
             )
             ok = cur.rowcount > 0
+            conn.execute("DELETE FROM dispatch_claims WHERE message_key=?", (message_key,))
         maybe_prune()
         return ok
     except Exception as exc:
@@ -348,26 +366,75 @@ def bind_turn_session(turn_id: str, session_id: str) -> None:
         logger.debug("excubitor: bind_turn_session failed: %s", exc)
 
 
-def resolve_turn_id(*, session_id: str = "", turn_id: str = "", task_id: str = "") -> str:
-    if session_id:
-        unbound = find_open_unbound_turn()
-        if unbound:
-            bind_turn_session(str(unbound["turn_id"]), session_id)
-    if turn_id and get_turn(str(turn_id)):
-        return str(turn_id)
-    if task_id and get_turn(str(task_id)):
-        return str(task_id)
+def resolve_turn_id(
+    *,
+    session_id: str = "",
+    turn_id: str = "",
+    task_id: str = "",
+    session_key: str = "",
+    platform: str = "",
+    chat_id: str = "",
+    start_new: bool = False,
+) -> str:
+    """Resolve explicit IDs first; never borrow an unrelated gateway turn.
+
+    Hermes supplies its route via task-local plugin_session.session_key(). A
+    host with no route/source identity cannot safely associate an unbound turn.
+    """
+    conn = _conn()
+    for ident in (turn_id, task_id):
+        if not ident:
+            continue
+        if get_turn(str(ident)):
+            return str(ident)
+        alias = conn.execute(
+            "SELECT turn_id FROM turn_aliases WHERE alias=?", (str(ident),)
+        ).fetchone()
+        if alias:
+            return str(alias["turn_id"])
+    if not session_key:
+        try:
+            from hermes_cli.plugin_session import session_key as current_key
+
+            session_key = current_key()
+        except Exception:
+            pass
+    if session_key or (platform and chat_id):
+        # Claim and bind in a write transaction, never by process-global recency.
+        with _tx() as tx:
+            tx.execute("BEGIN IMMEDIATE")
+            rows = tx.execute(
+                "SELECT * FROM turns WHERE status='open' AND "
+                "(session_id='' OR session_id IS NULL) ORDER BY opened_at"
+            ).fetchall()
+            matches = [
+                r
+                for r in rows
+                if (
+                    (session_key and json.loads(r["meta_json"]).get("session_key") == session_key)
+                    or (not session_key and r["platform"] == platform and r["chat_id"] == chat_id)
+                )
+            ]
+            if len(matches) == 1:
+                tid = str(matches[0]["turn_id"])
+                tx.execute("UPDATE turns SET session_id=? WHERE turn_id=?", (session_id, tid))
+                for alias in (turn_id, task_id):
+                    if alias:
+                        tx.execute("INSERT OR IGNORE INTO turn_aliases VALUES (?, ?)", (alias, tid))
+                return tid
     open_t = find_open_turn_for_session(session_id)
-    if open_t:
+    if open_t and (not start_new or not turn_id):
         return str(open_t["turn_id"])
-    if turn_id:
-        return str(turn_id)
-    if task_id:
-        return str(task_id)
-    # Synthetic: one open bucket per session so CLI paths still ledger.
-    if session_id:
-        return f"sess:{session_id}"
-    return f"anon:{int(time.time() * 1000)}"
+    if turn_id or task_id:
+        return str(turn_id or task_id)
+    if session_id and not start_new:
+        latest = conn.execute(
+            "SELECT turn_id FROM turns WHERE session_id=? ORDER BY opened_at DESC LIMIT 1",
+            (session_id,),
+        ).fetchone()
+        if latest:
+            return str(latest["turn_id"])
+    return f"sess:{session_id}:{uuid.uuid4().hex}" if session_id else f"anon:{uuid.uuid4().hex}"
 
 
 def mark_reply(turn_id: str, *, status: str = "replied") -> None:
@@ -428,15 +495,25 @@ def add_cost(turn_id: str, amount: float, *, session_id: str = "") -> float:
 def spend_for(scope: str, scope_key: str, day: str | None = None) -> float:
     day = day or utc_day()
     try:
-        row = (
-            _conn()
-            .execute(
-                "SELECT cost_usd FROM spend WHERE scope = ? AND scope_key = ? AND day = ?",
-                (scope, scope_key, day),
+        if scope == "session":
+            row = (
+                _conn()
+                .execute(
+                    "SELECT SUM(cost_usd) AS cost_usd FROM spend WHERE scope=? AND scope_key=?",
+                    (scope, scope_key),
+                )
+                .fetchone()
             )
-            .fetchone()
-        )
-        return float(row["cost_usd"]) if row else 0.0
+        else:
+            row = (
+                _conn()
+                .execute(
+                    "SELECT cost_usd FROM spend WHERE scope=? AND scope_key=? AND day=?",
+                    (scope, scope_key, day),
+                )
+                .fetchone()
+            )
+        return float(row["cost_usd"] or 0) if row else 0.0
     except Exception:
         return 0.0
 
@@ -544,20 +621,25 @@ def overdue_open_turns(now: float | None = None) -> list[dict[str, Any]]:
         return []
 
 
-def mark_alert_fired(turn_id: str, reason: str) -> None:
+def mark_alert_fired(turn_id: str, reason: str) -> bool:
+    """Atomically claim a hang before sending (at most one attempt, even on failure)."""
     try:
         with _tx() as conn:
-            conn.execute(
-                "UPDATE turns SET alerts_fired = alerts_fired + 1, last_reason = ?, status = 'alerted' "
-                "WHERE turn_id = ?",
-                (reason, turn_id),
+            cur = conn.execute(
+                "UPDATE turns SET alerts_fired=1, last_reason=?, status='alerted' "
+                "WHERE turn_id=? AND status='open' AND alerts_fired=0 AND deadline_at<=?",
+                (reason, turn_id, time.time()),
             )
+            if not cur.rowcount:
+                return False
             conn.execute(
-                "INSERT INTO stats(key, value) VALUES('alerts', 1) "
-                "ON CONFLICT(key) DO UPDATE SET value = value + 1"
+                "INSERT INTO stats(key,value) VALUES('alerts',1) "
+                "ON CONFLICT(key) DO UPDATE SET value=value+1"
             )
+        return True
     except Exception as exc:
-        logger.debug("excubitor: mark_alert_fired failed: %s", exc)
+        logger.debug("excubitor: alert claim failed: %s", exc)
+        return False
 
 
 def summarize() -> dict[str, Any]:
@@ -585,18 +667,21 @@ def summarize() -> dict[str, Any]:
     }
 
 
-
 def recent_alerts(limit: int = 5) -> list[dict[str, Any]]:
     """Newest alerted turns (fail-open → [])."""
     try:
         limit = max(1, min(20, int(limit)))
-        rows = _conn().execute(
-            "SELECT turn_id, session_id, platform, status, cost_usd, loop_count, "
-            "alerts_fired, last_reason, opened_at, deadline_at, reply_at "
-            "FROM turns WHERE alerts_fired > 0 OR status = 'alerted' "
-            "ORDER BY COALESCE(deadline_at, opened_at) DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        rows = (
+            _conn()
+            .execute(
+                "SELECT turn_id, session_id, platform, status, cost_usd, loop_count, "
+                "alerts_fired, last_reason, opened_at, deadline_at, reply_at "
+                "FROM turns WHERE alerts_fired > 0 OR status = 'alerted' "
+                "ORDER BY COALESCE(deadline_at, opened_at) DESC LIMIT ?",
+                (limit,),
+            )
+            .fetchall()
+        )
         out = []
         for r in rows:
             out.append({k: r[k] for k in r.keys()})
@@ -627,12 +712,16 @@ def _open_turns_detail(now: float, limit: int = 8) -> list[dict[str, Any]]:
     """Open turns with idle seconds (fail-open -> [])."""
     try:
         limit = max(1, min(20, int(limit)))
-        rows = _conn().execute(
-            "SELECT turn_id, session_id, platform, cost_usd, loop_count, "
-            "opened_at, deadline_at FROM turns WHERE status = 'open' "
-            "ORDER BY opened_at ASC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        rows = (
+            _conn()
+            .execute(
+                "SELECT turn_id, session_id, platform, cost_usd, loop_count, "
+                "opened_at, deadline_at FROM turns WHERE status = 'open' "
+                "ORDER BY opened_at ASC LIMIT ?",
+                (limit,),
+            )
+            .fetchall()
+        )
         out: list[dict[str, Any]] = []
         for r in rows:
             opened = float(r["opened_at"] or now)
@@ -685,9 +774,7 @@ def _stage_level(
 
 def _read_spend_saved() -> float:
     try:
-        row = _conn().execute(
-            "SELECT value FROM stats WHERE key = 'spend_saved_usd'"
-        ).fetchone()
+        row = _conn().execute("SELECT value FROM stats WHERE key = 'spend_saved_usd'").fetchone()
         if row is None:
             return 0.0
         return float(row["value"] if hasattr(row, "keys") else row[0])
@@ -714,18 +801,22 @@ def snapshot_for_ui() -> dict[str, Any]:
 
     cfg = _config.settings()
     summary = summarize()
-    day_cap = float(cfg.get("day_budget_usd") or 5.0)
-    sess_cap = float(cfg.get("session_budget_usd") or 2.0)
+    day_cap = float(_config.budget(cfg, "day_budget_usd", 5.0))
+    sess_cap = float(_config.budget(cfg, "session_budget_usd", 2.0))
     day_spend = float(summary.get("day_spend_usd") or 0.0)
-    ratio = (day_spend / day_cap) if day_cap > 0 else 0.0
+    ratio = (day_spend / day_cap) if day_cap > 0 else 1.0
     alerts = recent_alerts(5)
     now = time.time()
     overdue = 0
     try:
-        row = _conn().execute(
-            "SELECT COUNT(*) AS c FROM turns WHERE status = 'open' AND deadline_at < ?",
-            (now,),
-        ).fetchone()
+        row = (
+            _conn()
+            .execute(
+                "SELECT COUNT(*) AS c FROM turns WHERE status = 'open' AND deadline_at < ?",
+                (now,),
+            )
+            .fetchone()
+        )
         overdue = int(row["c"]) if row else 0
     except Exception:
         overdue = 0
@@ -740,9 +831,9 @@ def snapshot_for_ui() -> dict[str, Any]:
         except Exception:
             pass
 
-    if overdue > 0 or recent_alert:
+    if overdue > 0 or recent_alert or ratio >= 1.0:
         level = "alert"
-    elif ratio >= 0.8 or int(summary.get("open_turns") or 0) > 0 or int(summary.get("alerts") or 0) > 0:
+    elif ratio >= 0.8 or int(summary.get("open_turns") or 0) > 0:
         level = "warning"
     else:
         level = "ok"
@@ -831,13 +922,11 @@ def snapshot_for_ui() -> dict[str, Any]:
                 "opened_at": a.get("opened_at"),
                 "deadline_at": a.get("deadline_at"),
                 "alerted_at": a.get("deadline_at") or a.get("opened_at"),
-                "relative": _relative_age(
-                    a.get("deadline_at") or a.get("opened_at"), now
-                ),
+                "relative": _relative_age(a.get("deadline_at") or a.get("opened_at"), now),
             }
             for a in alerts
         ],
-        "chip_label": _chip_label(day_spend, day_cap, summary, overdue, level),
+        "chip_label": _chip_label(day_spend, day_cap, summary, overdue, level, recent_alert),
         "last_receipt": _last_receipt_for_ui(),
     }
 
@@ -857,11 +946,12 @@ def _last_receipt_for_ui() -> dict[str, Any] | None:
         return None
 
 
-def _chip_label(day_spend, day_cap, summary, overdue, level) -> str:
-    spend = f"${day_spend:.2f}/${day_cap:.0f}"
+def _chip_label(day_spend, day_cap, summary, overdue, level, recent_alert) -> str:
+    cap = f"{day_cap:g}" if float(day_cap).is_integer() else f"{day_cap:.2f}"
+    spend = f"${day_spend:.2f}/${cap}"
     open_n = int(summary.get("open_turns") or 0)
     if level == "alert":
-        return f"⚠ {spend} · hang"
+        return f"⚠ {spend} · {'hang' if overdue or recent_alert else 'cap'}"
     if open_n:
         return f"{spend} · {open_n} open"
     return spend
@@ -910,6 +1000,7 @@ def prune_old(*, seen_ttl_hours: float = 168.0, turn_ttl_hours: float = 72.0) ->
                 conn.execute("DELETE FROM tool_calls WHERE turn_id = ?", (tid,))
                 conn.execute("DELETE FROM turn_events WHERE turn_id = ?", (tid,))
                 conn.execute("DELETE FROM receipts WHERE turn_id = ?", (tid,))
+                conn.execute("DELETE FROM turn_aliases WHERE turn_id = ?", (tid,))
                 deleted["tool_calls"] += 1
             if ids:
                 conn.execute(
@@ -964,17 +1055,23 @@ def add_turn_event(turn_id: str, kind: str, **detail: Any) -> None:
 
 def turn_events(turn_id: str) -> list[dict[str, Any]]:
     try:
-        rows = _conn().execute(
-            "SELECT ts, kind, detail_json FROM turn_events WHERE turn_id = ? ORDER BY ts, id",
-            (turn_id,),
-        ).fetchall()
+        rows = (
+            _conn()
+            .execute(
+                "SELECT ts, kind, detail_json FROM turn_events WHERE turn_id = ? ORDER BY ts, id",
+                (turn_id,),
+            )
+            .fetchall()
+        )
         out = []
         for r in rows:
             try:
                 detail = json.loads(r["detail_json"] or "{}")
             except Exception:
                 detail = {}
-            out.append({"ts": r["ts"], "kind": r["kind"], **(detail if isinstance(detail, dict) else {})})
+            out.append(
+                {"ts": r["ts"], "kind": r["kind"], **(detail if isinstance(detail, dict) else {})}
+            )
         return out
     except Exception:
         return []
@@ -984,10 +1081,14 @@ def find_turn_by_message_key(message_key: str) -> dict[str, Any] | None:
     if not message_key:
         return None
     try:
-        row = _conn().execute(
-            "SELECT * FROM turns WHERE message_key = ? ORDER BY opened_at DESC LIMIT 1",
-            (message_key,),
-        ).fetchone()
+        row = (
+            _conn()
+            .execute(
+                "SELECT * FROM turns WHERE message_key = ? ORDER BY opened_at DESC LIMIT 1",
+                (message_key,),
+            )
+            .fetchone()
+        )
         return dict(row) if row else None
     except Exception:
         return None
@@ -1001,19 +1102,28 @@ def save_receipt(turn_id: str, text: str, data: dict[str, Any], *, notable: bool
                 "VALUES (?, ?, ?, ?, ?, 0) ON CONFLICT(turn_id) DO UPDATE SET "
                 "created_at = excluded.created_at, text = excluded.text, "
                 "data_json = excluded.data_json, notable = excluded.notable",
-                (turn_id, time.time(), text, json.dumps(data, ensure_ascii=False, default=str),
-                 1 if notable else 0),
+                (
+                    turn_id,
+                    time.time(),
+                    text,
+                    json.dumps(data, ensure_ascii=False, default=str),
+                    1 if notable else 0,
+                ),
             )
     except Exception as exc:
         logger.debug("excubitor: save_receipt failed: %s", exc)
 
 
-def mark_receipt_notified(turn_id: str) -> None:
+def mark_receipt_notified(turn_id: str) -> bool:
     try:
         with _tx() as conn:
-            conn.execute("UPDATE receipts SET notified = 1 WHERE turn_id = ?", (turn_id,))
+            cur = conn.execute(
+                "UPDATE receipts SET notified=1 WHERE turn_id=? AND notified=0", (turn_id,)
+            )
+            return cur.rowcount == 1
     except Exception as exc:
         logger.debug("excubitor: mark_receipt_notified failed: %s", exc)
+        return False
 
 
 def _receipt_row(row: Any) -> dict[str, Any]:
@@ -1044,9 +1154,61 @@ def get_receipt(turn_id: str = "") -> dict[str, Any] | None:
                     (len(turn_id), turn_id),
                 ).fetchone()
         else:
-            row = conn.execute(
-                "SELECT * FROM receipts ORDER BY created_at DESC LIMIT 1"
-            ).fetchone()
+            row = conn.execute("SELECT * FROM receipts ORDER BY created_at DESC LIMIT 1").fetchone()
         return _receipt_row(row) if row else None
     except Exception:
         return None
+
+
+def claim_dispatch(message_key: str) -> bool:
+    """Reserve pre-auth deliveries separately: only admission writes seen/turns.
+
+    A 30s lease bounds suppression if auth fails or the process dies before
+    admission. Only a caller receiving False may count a dropped delivery.
+    """
+    try:
+        from . import config
+        from .hashing import is_text_fallback_key
+
+        now = time.time()
+        ttl = float(config.settings()["text_dedup_seconds"])
+        with _tx() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("DELETE FROM dispatch_claims WHERE expires_at<=?", (now,))
+            if is_text_fallback_key(message_key):
+                conn.execute(
+                    "DELETE FROM seen_messages WHERE message_key=? AND first_seen_at<?",
+                    (message_key, now - ttl),
+                )
+            seen = conn.execute(
+                "SELECT 1 FROM seen_messages WHERE message_key=?", (message_key,)
+            ).fetchone()
+            if seen:
+                return False
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO dispatch_claims VALUES (?,?)", (message_key, now + 30)
+            )
+            return cur.rowcount == 1
+    except Exception as exc:
+        logger.debug("excubitor: dispatch claim failed open: %s", exc)
+        return True
+
+
+def cumulative_cost_delta(session_id: str, total: float) -> float:
+    """Session-cumulative total: atomically charge only increases; reset on decrease.
+
+    A decrease is treated as a provider counter reset, charging its new value.
+    """
+    with _tx() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT total FROM cost_cursors WHERE session_id=?", (session_id,)
+        ).fetchone()
+        previous = float(row["total"]) if row else 0.0
+        delta = total - previous if total >= previous else total
+        conn.execute(
+            "INSERT INTO cost_cursors VALUES (?,?) ON CONFLICT(session_id) "
+            "DO UPDATE SET total=excluded.total",
+            (session_id, total),
+        )
+    return max(0.0, delta)

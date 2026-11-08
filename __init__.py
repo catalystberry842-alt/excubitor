@@ -68,7 +68,7 @@ def on_pre_tool_call(tool_name=None, args=None, task_id="", session_id="", turn_
     loop_directive = work.evaluate_loop(
         tid,
         str(tool_name or ""),
-        args if isinstance(args, dict) else {},
+        args,
         session_id=session_id or "",
         cfg=cfg,
     )
