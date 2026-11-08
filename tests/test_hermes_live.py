@@ -85,6 +85,7 @@ def _load_plugins():
 def test_gateway_dedup_via_real_hm_hook(hermes_home):
     mgr = _load_plugins()
     assert mgr.has_hook("pre_gateway_dispatch")
+    assert mgr.has_hook("post_gateway_admission")
 
     from gateway.config import GatewayConfig, Platform, PlatformConfig
     from gateway.platforms.event import MessageEvent
@@ -113,7 +114,11 @@ def test_gateway_dedup_via_real_hm_hook(hermes_home):
         raw_message={"id": "live-dup-1"},
     )
 
+    from gateway.run_inbound_consumer import run_post_admission_hook
+
     first = asyncio.run(runner._hm_pre_gateway_dispatch_hook(event, source))
+    consumed, _reply = asyncio.run(run_post_admission_hook(runner, event, source, "live-sk"))
+    assert consumed is False
     second = asyncio.run(runner._hm_pre_gateway_dispatch_hook(event, source))
     assert first is not None
     assert second is None

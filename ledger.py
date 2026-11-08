@@ -207,12 +207,29 @@ def get_stats() -> dict[str, float]:
 
 def already_seen(message_key: str) -> bool:
     try:
+        from . import config as _config
+        from .hashing import is_text_fallback_key
+
         row = (
             _conn()
-            .execute("SELECT 1 FROM seen_messages WHERE message_key = ?", (message_key,))
+            .execute(
+                "SELECT message_key, first_seen_at FROM seen_messages WHERE message_key = ?",
+                (message_key,),
+            )
             .fetchone()
         )
-        return row is not None
+        if row is None:
+            return False
+        if is_text_fallback_key(message_key):
+            ttl = float((_config.settings() or {}).get("text_dedup_seconds") or 120.0)
+            age = time.time() - float(row["first_seen_at"] or 0)
+            if age > max(1.0, ttl):
+                with _tx() as conn:
+                    conn.execute(
+                        "DELETE FROM seen_messages WHERE message_key = ?", (message_key,)
+                    )
+                return False
+        return True
     except Exception as exc:
         logger.debug("excubitor: already_seen failed: %s", exc)
         return False  # fail-open: treat as new
@@ -300,14 +317,53 @@ def find_open_turn_for_session(session_id: str) -> dict[str, Any] | None:
         return None
 
 
+def find_open_unbound_turn() -> dict[str, Any] | None:
+    """Most recent open turn that has no agent session_id yet (gateway-admitted)."""
+    try:
+        row = (
+            _conn()
+            .execute(
+                "SELECT * FROM turns WHERE status = 'open' "
+                "AND (session_id IS NULL OR session_id = '') "
+                "ORDER BY opened_at DESC LIMIT 1"
+            )
+            .fetchone()
+        )
+        return dict(row) if row else None
+    except Exception:
+        return None
+
+
+def bind_turn_session(turn_id: str, session_id: str) -> None:
+    if not turn_id or not session_id:
+        return
+    try:
+        with _tx() as conn:
+            conn.execute(
+                "UPDATE turns SET session_id = ? WHERE turn_id = ? "
+                "AND (session_id IS NULL OR session_id = '')",
+                (session_id, turn_id),
+            )
+    except Exception as exc:
+        logger.debug("excubitor: bind_turn_session failed: %s", exc)
+
+
 def resolve_turn_id(*, session_id: str = "", turn_id: str = "", task_id: str = "") -> str:
-    if turn_id:
+    if session_id:
+        unbound = find_open_unbound_turn()
+        if unbound:
+            bind_turn_session(str(unbound["turn_id"]), session_id)
+    if turn_id and get_turn(str(turn_id)):
         return str(turn_id)
-    if task_id:
+    if task_id and get_turn(str(task_id)):
         return str(task_id)
     open_t = find_open_turn_for_session(session_id)
     if open_t:
         return str(open_t["turn_id"])
+    if turn_id:
+        return str(turn_id)
+    if task_id:
+        return str(task_id)
     # Synthetic: one open bucket per session so CLI paths still ledger.
     if session_id:
         return f"sess:{session_id}"

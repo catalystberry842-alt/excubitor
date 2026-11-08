@@ -53,3 +53,8 @@ def message_key(
     if mid:
         return f"{plat}:{chat}:{mid}"
     return f"{plat}:{chat}:h:{stable_hash(raw if raw is not None else '', n=20)}"
+
+
+def is_text_fallback_key(key: str) -> bool:
+    """True when message_key used the raw-text hash fallback (no platform message id)."""
+    return bool(re.search(r":h:[0-9a-f]+$", key or ""))

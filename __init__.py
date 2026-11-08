@@ -1,7 +1,7 @@
 """Excubitor — night sentry for Hermes Agent turns.
 
 One per-turn ledger (plugin_db) is the spine:
-  Intake  — pre_gateway_dispatch dedups platform+chat_id+message_id (raw hash fallback)
+  Intake  — pre_gateway_dispatch drops admitted replays; post_gateway_admission opens the turn
   Work    — pre/post_tool_call track no-progress loops (same tool+args, no new results)
   Spend   — post_api_request costs; pre_llm_call / pre_tool_call enforce caps
   Watch   — deadline without outbound reply → pluggable alert (log/ntfy/webhook)
@@ -84,6 +84,7 @@ def register(ctx: Any) -> None:
 
     hooks = {
         "pre_gateway_dispatch": intake.on_pre_gateway_dispatch,
+        "post_gateway_admission": intake.on_post_gateway_admission,
         "pre_llm_call": spend.on_pre_llm_call,
         "post_llm_call": spend.on_post_llm_call,
         "pre_tool_call": on_pre_tool_call,

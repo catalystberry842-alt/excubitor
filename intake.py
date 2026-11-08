@@ -1,4 +1,4 @@
-"""Intake: pre_gateway_dispatch dedup + open ledger entry + start reply deadline."""
+"""Intake: replay-drop on pre_gateway_dispatch; open ledger after admission."""
 
 from __future__ import annotations
 
@@ -28,6 +28,34 @@ def _source_bits(event: Any) -> tuple[str, str, str | None, Any]:
     return str(platform), str(chat_id), (str(message_id) if message_id else None), raw
 
 
+def _admission_bits(
+    platform: str = "",
+    source: Any = None,
+    message_id: Any = None,
+    text: str = "",
+    event: Any = None,
+) -> tuple[str, str, str | None, Any]:
+    if event is not None:
+        return _source_bits(event)
+    plat = str(platform or "")
+    chat_id = ""
+    if isinstance(source, dict):
+        chat_id = str(source.get("chat_id") or "")
+        if not plat:
+            p = source.get("platform")
+            if isinstance(p, dict):
+                plat = str(p.get("value") or "")
+            else:
+                plat = str(p or "")
+    elif source is not None:
+        chat_id = str(getattr(source, "chat_id", "") or "")
+        if not plat:
+            p = getattr(source, "platform", None)
+            plat = getattr(p, "value", None) or str(p or "")
+    mid = str(message_id) if message_id else None
+    return plat, chat_id, mid, text
+
+
 def _note_dup(key: str) -> None:
     """Attach the dropped duplicate to the original turn; refresh its receipt if closed."""
     try:
@@ -45,7 +73,7 @@ def _note_dup(key: str) -> None:
 
 
 def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwargs):
-    """Drop duplicate inbound messages; open a turn ledger entry for new ones."""
+    """Drop inbound replays already admitted. Do not open a turn or mark seen here."""
     try:
         cfg = config.settings()
         if not cfg.get("enabled", True):
@@ -62,28 +90,58 @@ def on_pre_gateway_dispatch(event=None, gateway=None, session_store=None, **kwar
             _note_dup(key)
             logger.info("excubitor: skipping duplicate inbound %s", key)
             return {"action": "skip", "reason": f"excubitor: duplicate message {key}"}
+        return None
+    except Exception as exc:
+        logger.debug("excubitor: pre_gateway_dispatch failed open: %s", exc)
+        return None
+
+
+def on_post_gateway_admission(
+    session_key="",
+    platform="",
+    source=None,
+    message_id=None,
+    text="",
+    event=None,
+    **kwargs,
+):
+    """Record seen + open a ledger turn only after Hermes admits the sender."""
+    try:
+        cfg = config.settings()
+        if not cfg.get("enabled", True):
+            return None
+        plat, chat_id, mid, raw = _admission_bits(
+            platform=platform, source=source, message_id=message_id, text=text, event=event
+        )
+        if not mid and raw is None:
+            return None
+        key = mk_message_key(plat, chat_id, mid, raw)
         inserted = ledger.mark_seen(
-            key, platform=platform, chat_id=chat_id, message_id=message_id or ""
+            key, platform=plat, chat_id=chat_id, message_id=mid or ""
         )
         if not inserted:
             ledger.bump_stat("duplicates_dropped")
             _note_dup(key)
-            return {"action": "skip", "reason": f"excubitor: duplicate message {key}"}
+            return None
         turn_id = f"gw:{key}:{uuid.uuid4().hex[:8]}"
         ledger.open_turn(
             turn_id,
             message_key=key,
-            platform=platform,
+            platform=plat,
             chat_id=chat_id,
             deadline_minutes=cfg["reply_deadline_minutes"],
-            meta={"opened_by": "pre_gateway_dispatch", "ts": time.time()},
+            meta={
+                "opened_by": "post_gateway_admission",
+                "ts": time.time(),
+                "session_key": session_key or "",
+            },
         )
-        # Stash turn id on the event when possible so later hooks can find it.
-        try:
-            event._excubitor_turn_id = turn_id
-        except Exception:
-            pass
+        if event is not None:
+            try:
+                event._excubitor_turn_id = turn_id
+            except Exception:
+                pass
         return None
     except Exception as exc:
-        logger.debug("excubitor: pre_gateway_dispatch failed open: %s", exc)
+        logger.debug("excubitor: post_gateway_admission failed open: %s", exc)
         return None

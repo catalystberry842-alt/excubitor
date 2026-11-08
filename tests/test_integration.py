@@ -70,6 +70,7 @@ def test_full_ledger_story(modules, monkeypatch):
         source=SimpleNamespace(platform=SimpleNamespace(value="telegram"), chat_id="99"),
     )
     assert intake.on_pre_gateway_dispatch(event=event) is None
+    assert intake.on_post_gateway_admission(event=event, session_key="story") is None
     assert intake.on_pre_gateway_dispatch(event=event)["action"] == "skip"
 
     # Bind a session turn and burn some money + loop

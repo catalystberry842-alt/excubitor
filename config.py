@@ -17,7 +17,8 @@ DEFAULTS: dict[str, Any] = {
     "price_table": {},
     "watch_interval_seconds": 30.0,
     "enabled": True,
-    "seen_ttl_hours": 168.0,  # 7 days
+    "seen_ttl_hours": 168.0,  # 7 days (id-based inbound keys)
+    "text_dedup_seconds": 120.0,  # short replay window for text-only fallback keys
     "turn_ttl_hours": 72.0,  # 3 days
     "max_tool_rows_per_turn": 500,
     "prune_every_n_ops": 50,
@@ -76,6 +77,7 @@ def settings() -> dict[str, Any]:
         out["loop_threshold"] = max(2, int(out["loop_threshold"]))
         out["watch_interval_seconds"] = max(5.0, float(out["watch_interval_seconds"]))
         out["seen_ttl_hours"] = max(1.0, float(out.get("seen_ttl_hours") or 168.0))
+        out["text_dedup_seconds"] = max(1.0, float(out.get("text_dedup_seconds") or 120.0))
         out["turn_ttl_hours"] = max(1.0, float(out.get("turn_ttl_hours") or 72.0))
         out["max_tool_rows_per_turn"] = max(50, int(out.get("max_tool_rows_per_turn") or 500))
         out["prune_every_n_ops"] = max(1, int(out.get("prune_every_n_ops") or 50))

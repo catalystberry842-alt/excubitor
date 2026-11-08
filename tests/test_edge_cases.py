@@ -14,6 +14,7 @@ def test_missing_message_id_falls_back_to_raw_hash(modules):
         source = type("S", (), {"platform": type("P", (), {"value": "cli"})(), "chat_id": "c1"})()
 
     assert intake.on_pre_gateway_dispatch(event=Ev()) is None
+    assert intake.on_post_gateway_admission(event=Ev()) is None
     out = intake.on_pre_gateway_dispatch(event=Ev())
     assert isinstance(out, dict) and out.get("action") == "skip"
     assert ledger.summarize()["duplicates_dropped"] >= 1

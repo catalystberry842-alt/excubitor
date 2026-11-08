@@ -10,6 +10,7 @@ homepage: https://github.com/catalystberry842-alt/excubitor
 tags: [gateway, reliability, budget, watchdog, dedup]
 provides_hooks:
   - pre_gateway_dispatch
+  - post_gateway_admission
   - pre_llm_call
   - post_llm_call
   - pre_tool_call
@@ -83,7 +84,12 @@ config_schema:
     type: float
     default: 168.0
     label: Seen-message TTL (hours)
-    description: "Prune inbound dedup keys older than this (default 7 days)."
+    description: "Prune id-based inbound dedup keys older than this (default 7 days)."
+  text_dedup_seconds:
+    type: float
+    default: 120.0
+    label: Text-only dedup window (seconds)
+    description: "When a message has no platform id, drop matching text only inside this short replay window (default 120s). A later identical 'yes' is not silently dropped."
   turn_ttl_hours:
     type: float
     default: 72.0
