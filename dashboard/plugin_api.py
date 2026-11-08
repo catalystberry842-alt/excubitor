@@ -97,6 +97,28 @@ def _snapshot() -> dict[str, Any]:
             "recent_alerts": [],
             "last_receipt": None,
             "enabled": True,
+            "blocked_count": 0,
+            "hang_idle_seconds": 0,
+            "longest_silent_seconds": 0,
+            "spend_saved_usd": 0.0,
+            "spend_ratio": 0.0,
+            "stages": {
+                "intake": {"level": "ok", "value": 0, "label": "dupes dropped"},
+                "work": {"level": "ok", "value": 0, "label": "loops broken"},
+                "spend": {
+                    "level": "ok",
+                    "value": 0.0,
+                    "cap": 5.0,
+                    "saved": 0.0,
+                    "label": "$ spent/cap",
+                },
+                "watch": {
+                    "level": "ok",
+                    "value": 0,
+                    "label": "longest silent turn (s)",
+                },
+            },
+            "open_turns_detail": [],
         }
 
 
