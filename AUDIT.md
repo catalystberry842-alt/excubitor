@@ -9,7 +9,7 @@ Independent recheck: fresh `/workspace/recheck` clone + Hermes `main` f87c541 + 
 | Area | Result |
 |---|---|
 | Live scenarios A–G | **PASS** (see `docs/evidence/SUMMARY.json`) |
-| Unit tests | 32 passed |
+| Current tests (2026-11-08) | 92 passed |
 | Coverage | **~71%** line (`docs/evidence/pytest_cov.txt`) |
 | Ruff | clean after config + autofix |
 | mypy | soft check on leaf modules; `config.bind_ctx` typed as `Any` |
@@ -18,8 +18,8 @@ Independent recheck: fresh `/workspace/recheck` clone + Hermes `main` f87c541 + 
 
 | ID | Severity | Finding | Status |
 |---|---|---|---|
-| S1 | Medium | Alert/log bodies could leak secrets if tool args or user text were forwarded. | **Fixed** — `notify._sanitize_text` redacts `api_key`/`token`/`sk-`/`gho_`/`ghp_`; strips `user_message`/`args`/`result`/`prompt` from outbound payloads. |
-| S2 | Medium | `webhook_url` / `ntfy_topic` accepted arbitrary strings (SSRF / path injection risk). | **Fixed** — HTTPS/HTTP-only URL validation; reject userinfo-in-URL; ntfy topic `[A-Za-z0-9_-]{1,64}` only. |
+| S1 | Medium | Alert/log bodies could leak secrets if tool args or user text were forwarded. | **Corrected 2026-11-08** — earlier “Fixed” claim was too broad: quoted JSON keys and Bearer tokens leaked. Regression tests now cover quoted keys, complete Bearer tokens and nested payloads; sensitive raw fields are removed recursively. Heuristic redaction is not a guarantee for arbitrary unknown secret formats. |
+| S2 | Medium | `webhook_url` / `ntfy_topic` accepted arbitrary strings (SSRF / path injection risk). | **Hardened 2026-11-08** — require HTTPS except loopback HTTP; reject credentials, private/non-global literal and resolved IPs unless explicitly allowed; pin DNS result with TLS SNI/verification preserved; disable redirects/proxies. ntfy topic `[A-Za-z0-9_-]{1,64}` only. |
 | S3 | Low | Ledger connection cached on `threading.local` could stick to a stale `HERMES_HOME` after env change (tests / multi-home). | **Fixed** — `_db_identity()` reopens when home/test path changes; `use_test_db` clears `db_id`. |
 | S4 | Low | Unbounded `tool_calls` / `seen_messages` growth under loop storms or replay floods. | **Fixed earlier** — `max_tool_rows_per_turn` (default 500), `seen_ttl_hours` / `turn_ttl_hours` + `prune_old`. |
 | S5 | Low | Blind `except Exception` in hooks. | **Accepted** — fail-open is a product requirement; ruff `BLE001` ignored intentionally. Logged at debug. |
@@ -52,8 +52,8 @@ Independent recheck: fresh `/workspace/recheck` clone + Hermes `main` f87c541 + 
 | Fresh clone from GitHub | OK |
 | Fresh Hermes `main` + venv (Python 3.14) | OK (`hermes` vgit.f87c541) |
 | `hermes plugins validate` | PASS |
-| `hermes plugins doctor excubitor --ci` | PASS (0 tools, 7 hooks) |
-| Unit tests | 32 passed, ~71% coverage, ruff clean |
+| `hermes plugins doctor excubitor --ci` | PASS (0 tools, 8 hooks (current manifest; historical run had 7)) |
+| Historical tests (2026-11-05) | 32 passed then; current suite: 92 passed (coverage not remeasured) |
 | Live A–F | ALL PASS (`docs/evidence/20261105T190238Z_*.json`) |
 | CI `gh run list` | success on `main` (latest pin + evidence commits) |
 
@@ -79,3 +79,23 @@ Added unified Desktop half:
 - Tests: `tests/test_desktop_api.py` (5)
 - `hermes plugins validate` reports `desktop surface` OK; doctor OK
 - Agent hooks/commands unchanged when Desktop is absent
+
+
+## Bug-report sweep (2026-11-08, Africa/Lagos)
+
+All eight confirmed findings have dedicated regressions in `tests/test_bugfix_*.py`,
+covering CLI turn isolation, notification idempotency, chat identity, raw tool arguments,
+per-key settings, longest model matching, redaction and zero budgets. Additional regressions
+cover admission races, hang claims, shared-memory fallback, veto lifecycle, per-tool approval,
+chip recovery/fractional caps, cache accounting, cumulative cost and session lifetime budgets.
+
+The earlier “no product logic regressions” conclusion was limited to its historical evidence;
+it did not establish these cases. Current test count above supersedes stale README/audit counts.
+Current Hermes source confirms `agent/turn_finalizer.py::_apply_output_hooks` emits
+`post_llm_call` once after the tool loop, not per model API response. No speculative
+hook removal was made; explicit intermediate tool/final flags are handled defensively.
+
+Notification claims provide **at most one attempt**, not exactly-once delivery. Pre-auth
+reservations expire in 30 seconds; only admitted senders get seen/turn rows. Gateway matching
+uses host task-local route identity and never “newest unbound”. API authentication remains
+the host's responsibility; do not publish `/status` without it. See README limitations.
