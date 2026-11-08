@@ -49,7 +49,7 @@ def build(turn_id: str, cfg: dict[str, Any] | None = None) -> dict[str, Any] | N
     cfg = cfg or config.settings()
     events = ledger.turn_events(turn_id)
     calls = ledger.all_tool_calls(turn_id)
-    day_cap = float(cfg.get("day_budget_usd") or 5.0)
+    day_cap = float(config.budget(cfg, "day_budget_usd", 5.0))
     cost = float(turn.get("cost_usd") or 0.0)
 
     dedups = [e for e in events if e["kind"] == "dedup"]
@@ -133,7 +133,10 @@ def finalize(turn_id: str, cfg: dict[str, Any] | None = None, *, notify: bool = 
         if not r:
             return None
         ledger.save_receipt(turn_id, r["text"], r["data"], notable=r["notable"])
-        if notify and r["notable"]:
+        if not notify and r["notable"]:
+            # Hang watcher already notified via its alert; replays must stay quiet.
+            ledger.mark_receipt_notified(turn_id)
+        if notify and r["notable"] and ledger.mark_receipt_notified(turn_id):
             send_alert(
                 cfg,
                 title="Excubitor: turn receipt",
@@ -145,7 +148,6 @@ def finalize(turn_id: str, cfg: dict[str, Any] | None = None, *, notify: bool = 
                     "receipt": r["text"],
                 },
             )
-            ledger.mark_receipt_notified(turn_id)
         return r["text"]
     except Exception as exc:
         logger.debug("excubitor: receipt for %s failed open: %s", turn_id, exc)

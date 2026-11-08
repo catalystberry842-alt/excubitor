@@ -43,7 +43,7 @@ config_schema:
     type: bool
     default: true
     label: Ask before first loop block
-    description: "On the first no-progress detection, escalate via approve (human gate) instead of hard-blocking. Later / high-spend detections always block."
+    description: "On the first no-progress detection per tool per turn, escalate via approve (human gate) instead of hard-blocking. Later / high-spend detections always block."
   receipts_enabled:
     type: bool
     default: true
@@ -65,6 +65,11 @@ config_schema:
     default: ""
     label: Webhook URL
     description: "HTTPS URL when notifier=webhook. POSTs a JSON alert body."
+  allow_private_webhooks:
+    type: bool
+    default: false
+    label: Allow private webhook targets
+    description: "Explicitly allow HTTPS webhooks to private IPs. Loopback HTTP is always allowed for local tests; redirects and proxies are never used."
   price_table:
     type: dict
     default: {}

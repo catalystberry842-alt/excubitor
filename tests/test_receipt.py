@@ -90,7 +90,7 @@ def test_veto_and_dedup_in_receipt(modules, monkeypatch):
     r = led.get_receipt("t_v")
     assert "cap veto on tool terminal" in r["text"]
     assert "dropped 1 duplicate" in r["text"]
-    assert len(sent) == 2
+    assert len(sent) == 1  # late replay refreshes storage, never re-notifies
 
 
 def test_command_and_status_api(modules, monkeypatch):
