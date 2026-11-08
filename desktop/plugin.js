@@ -95,7 +95,8 @@ function ChipFace({ data, loading }) {
   const blocked = blockedOf(data)
   const hangIdle = hangIdleOf(data)
   const ratio = (data && data.spend_ratio) || 0
-  const showHang = level === 'alert' || hangIdle > 0
+  const showHang = data?.stages?.watch?.level === 'alert' ||
+    (data && data.overdue_turns > 0) || hangIdle > 0
 
   return jsxs('span', {
     className:

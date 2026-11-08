@@ -120,6 +120,9 @@ def test_gateway_flow_closes_without_false_hang_alert(modules, monkeypatch):
     opened = ledger.find_open_unbound_turn()
     assert opened is not None
 
+    # The host supplies a task-local route key, not an arbitrary newest turn.
+    from hermes_cli import plugin_session
+    monkeypatch.setattr(plugin_session, "session_key", lambda: "gw-sk")
     spend.on_pre_llm_call(session_id="agent-sess", turn_id="core-turn-99")
     spend.on_post_llm_call(session_id="agent-sess", turn_id="core-turn-99")
 

@@ -31,7 +31,7 @@ def _cost_from_hook(
     explicit: Any = None,
 ) -> float:
     # Prefer an explicit dollar figure if a future / richer hook provides one.
-    for key in ("estimated_cost_usd", "cost_usd", "total_cost"):
+    for key in ("estimated_cost_usd", "cost_usd"):
         if isinstance(usage, dict) and usage.get(key) is not None:
             try:
                 return max(0.0, float(usage[key]))
@@ -43,6 +43,16 @@ def _cost_from_hook(
         except Exception:
             pass
     prompt, completion = _tokens_from_usage(usage)
+    if isinstance(usage, dict):
+        # Anthropic cache buckets are separate from input_tokens. OpenAI's
+        # prompt_tokens_details.cached_tokens is already INCLUDED in prompt_tokens.
+        if "prompt_tokens" not in usage:
+            prompt += int(
+                usage.get("cache_read_input_tokens") or usage.get("cache_read_tokens") or 0
+            )
+            prompt += int(
+                usage.get("cache_creation_input_tokens") or usage.get("cache_write_tokens") or 0
+            )
     return config.estimate_cost_usd(
         model=model,
         prompt_tokens=prompt,
@@ -54,12 +64,12 @@ def _cost_from_hook(
 def over_cap(cfg: dict[str, Any], *, session_id: str = "") -> str | None:
     day = ledger.utc_day()
     day_spend = ledger.spend_for("day", day, day)
-    day_cap = float(cfg.get("day_budget_usd") or 5.0)
+    day_cap = float(config.budget(cfg, "day_budget_usd", 5.0))
     if day_spend >= day_cap:
         return f"excubitor: day budget exhausted (${day_spend:.4f} / ${day_cap:.2f})"
     if session_id:
         sess_spend = ledger.spend_for("session", session_id, day)
-        sess_cap = float(cfg.get("session_budget_usd") or 2.0)
+        sess_cap = float(config.budget(cfg, "session_budget_usd", 2.0))
         if sess_spend >= sess_cap:
             return f"excubitor: session budget exhausted (${sess_spend:.4f} / ${sess_cap:.2f})"
     return None
@@ -87,7 +97,16 @@ def on_post_api_request(
                 deadline_minutes=cfg["reply_deadline_minutes"],
                 meta={"opened_by": "post_api_request"},
             )
-        amount = _cost_from_hook(usage=usage, model=model, cfg=cfg)
+        amount = _cost_from_hook(usage=usage, model=model, cfg=cfg, explicit=kwargs.get("cost_usd"))
+        if isinstance(usage, dict) and usage.get("total_cost") is not None:
+            delta = ledger.cumulative_cost_delta(
+                session_id or tid, max(0.0, float(usage["total_cost"]))
+            )
+            if (
+                not any(usage.get(k) is not None for k in ("estimated_cost_usd", "cost_usd"))
+                and kwargs.get("cost_usd") is None
+            ):
+                amount = delta
         if amount > 0:
             ledger.add_cost(tid, amount, session_id=session_id or "")
         return None
@@ -101,6 +120,13 @@ def on_post_llm_call(session_id="", turn_id="", task_id="", **kwargs):
     try:
         cfg = config.settings()
         if not cfg.get("enabled", True):
+            return None
+        # Current Hermes calls this ONCE after the tool loop (turn_finalizer).
+        # Defensive compatibility with hosts that expose intermediate responses.
+        response = kwargs.get("assistant_response")
+        if kwargs.get("tool_calls") or (isinstance(response, dict) and response.get("tool_calls")):
+            return None
+        if kwargs.get("is_final") is False:
             return None
         tid = ledger.resolve_turn_id(
             session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or ""
@@ -125,7 +151,13 @@ def on_pre_llm_call(
         if not cfg.get("enabled", True):
             return None
         tid = ledger.resolve_turn_id(
-            session_id=session_id or "", turn_id=turn_id or "", task_id=task_id or ""
+            session_id=session_id or "",
+            turn_id=turn_id or "",
+            task_id=task_id or "",
+            session_key=kwargs.get("session_key", ""),
+            platform=str(platform or ""),
+            chat_id=kwargs.get("chat_id", ""),
+            start_new=True,
         )
         turn = ledger.get_turn(tid)
         if not turn:
@@ -152,6 +184,10 @@ def on_pre_llm_call(
             ledger.bump_stat("cap_vetoes")
             ledger.set_turn_reason(tid, reason)
             ledger.add_turn_event(tid, "veto", reason=reason[:200])
+            ledger.mark_reply(tid, status="blocked")
+            from . import receipt
+
+            receipt.finalize(tid, cfg)
             return {"action": "block", "message": reason}
         return None
     except Exception as exc:
