@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Live Excubitor scenarios against real Hermes (webhook gateway + AIAgent).
 
+Dev-only harness: drives private Hermes internals on purpose, so it lives under tests/
+(skipped by the plugin scanner and never loaded by Hermes).
+
 Writes evidence under /workspace/excubitor/docs/evidence/ (no secrets).
 """
 
@@ -24,7 +27,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 # Paths: env overrides first, then common local checkouts.
-_REPO = Path(__file__).resolve().parents[1]
+_REPO = Path(__file__).resolve().parents[2]
 _hermes_env = (os.environ.get("HERMES_AGENT_ROOT") or os.environ.get("HERMES_ROOT") or "").strip()
 HERMES = Path(_hermes_env).expanduser() if _hermes_env else None
 if HERMES is None or not HERMES.exists():

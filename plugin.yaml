@@ -105,3 +105,8 @@ config_schema:
     default: 500
     label: Max tool rows per turn
     description: "Cap tool_call history rows retained per turn (bounds DB under loop storms)."
+  prune_every_n_ops:
+    type: int
+    default: 50
+    label: Prune every N ops
+    description: "How often (in ledger writes) the retention sweep runs to prune old seen keys and closed turns."

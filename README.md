@@ -50,7 +50,7 @@ Unit tests (no live gateway needed):
 ```bash
 pip install pytest ruff
 pytest -q --ignore=tests/test_hermes_live.py
-# expect: 92 passed
+# expect: 94 passed (96 with a Hermes checkout and tests/test_hermes_live.py)
 ruff check .
 ```
 

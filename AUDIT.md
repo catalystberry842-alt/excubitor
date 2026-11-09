@@ -9,7 +9,7 @@ Independent recheck: fresh `/workspace/recheck` clone + Hermes `main` f87c541 + 
 | Area | Result |
 |---|---|
 | Live scenarios A–G | **PASS** (see `docs/evidence/SUMMARY.json`) |
-| Current tests (2026-11-08) | 92 passed |
+| Current tests (2026-11-09) | 96 passed (94 without the live Hermes tests) |
 | Coverage | **~71%** line (`docs/evidence/pytest_cov.txt`) |
 | Ruff | clean after config + autofix |
 | mypy | soft check on leaf modules; `config.bind_ctx` typed as `Any` |
@@ -53,7 +53,7 @@ Independent recheck: fresh `/workspace/recheck` clone + Hermes `main` f87c541 + 
 | Fresh Hermes `main` + venv (Python 3.14) | OK (`hermes` vgit.f87c541) |
 | `hermes plugins validate` | PASS |
 | `hermes plugins doctor excubitor --ci` | PASS (0 tools, 8 hooks (current manifest; historical run had 7)) |
-| Historical tests (2026-11-05) | 32 passed then; current suite: 92 passed (coverage not remeasured) |
+| Historical tests (2026-11-05) | 32 passed then; current suite: 96 passed (coverage not remeasured) |
 | Live A–F | ALL PASS (`docs/evidence/20261105T190238Z_*.json`) |
 | CI `gh run list` | success on `main` (latest pin + evidence commits) |
 
@@ -62,7 +62,7 @@ Independent recheck: fresh `/workspace/recheck` clone + Hermes `main` f87c541 + 
 | ID | Severity | Finding | Status |
 |---|---|---|---|
 | D1 | High (docs) | README/TESTING said `hermes plugins install github:owner/repo`, which Hermes resolves to `github.com/github:owner/repo` (clone 404). | **Fixed** — docs now use `owner/repo` or full git URL. |
-| D2 | Medium (docs) | TESTING.md §5 pointed at box-only paths (`/workspace/hermes-venv`, `/workspace/excubitor-devtools/...`). | **Fixed** — portable `scripts/live_scenarios.py` + env vars. |
+| D2 | Medium (docs) | TESTING.md §5 pointed at box-only paths (`/workspace/hermes-venv`, `/workspace/excubitor-devtools/...`). | **Fixed** — portable `tests/dev/live_scenarios.py` + env vars. |
 | D3 | Low (tests) | `tests/test_hermes_live.py` hard-coded `/workspace/hermes-agent`. | **Fixed** — discovers via `HERMES_AGENT_ROOT` / common checkouts. |
 | N1 | Info | Scenario A synthetic `MessageEvent` hook-skip was `false` while durable `seen_messages` + Hermes duplicate both held — chat_id shape differs from live webhook v2 tokens. | **Documented** — not a product false-fail; pass criteria already accepted Hermes-dup OR seen row. |
 
