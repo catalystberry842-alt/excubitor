@@ -378,7 +378,7 @@ def resolve_turn_id(
 ) -> str:
     """Resolve explicit IDs first; never borrow an unrelated gateway turn.
 
-    Hermes supplies its route via task-local plugin_session.session_key(). A
+    Hermes supplies its route via the published gateway.session_context.get_session_env("HERMES_SESSION_KEY"). A
     host with no route/source identity cannot safely associate an unbound turn.
     """
     conn = _conn()
@@ -394,11 +394,12 @@ def resolve_turn_id(
             return str(alias["turn_id"])
     if not session_key:
         try:
-            from hermes_cli.plugin_session import session_key as current_key
+            from gateway.session_context import get_session_env
 
-            session_key = current_key()
+            session_key = get_session_env("HERMES_SESSION_KEY")
         except Exception:
-            pass
+            # Same legacy env var get_session_env falls back to.
+            session_key = os.getenv("HERMES_SESSION_KEY", "")
     if session_key or (platform and chat_id):
         # Claim and bind in a write transaction, never by process-global recency.
         with _tx() as tx:
