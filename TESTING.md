@@ -173,7 +173,7 @@ export HERMES_AGENT_ROOT=/path/to/hermes-agent   # checkout with run_agent.py
 export EXCUBITOR_NTFY_TOPIC=excubitor-$(openssl rand -hex 8)
 # optional: export HERMES_BIN=$(which hermes)
 
-python scripts/live_scenarios.py
+python tests/dev/live_scenarios.py
 ```
 
 Evidence lands in `docs/evidence/` (no secrets). Unit tests only:

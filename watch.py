@@ -125,15 +125,25 @@ def stop_watcher() -> None:
             _watcher = None
 
 
-def on_agent_loop_stopped(session_id="", reason="", **kwargs):
-    """If the agent was interrupted, close the open turn without alerting as a hang."""
+def on_agent_loop_stopped(session_key="", platform="", reason="", invalidation_reason="", **kwargs):
+    """If the agent was interrupted, close the open turn without alerting as a hang.
+
+    Hermes fires this with ``session_key``/``platform``/``reason``/``invalidation_reason``
+    (no ``session_id``), so match the turn on its gateway route key first and keep a
+    ``session_id`` fallback for older hosts.
+    """
     try:
         cfg = config.settings()
         if not cfg.get("enabled", True):
             return None
-        turn = ledger.find_open_turn_for_session(session_id or "")
+        turn = ledger.find_open_turn_for_session_key(session_key or "")
+        if not turn:
+            turn = ledger.find_open_turn_for_session(str(kwargs.get("session_id") or ""))
         if turn:
-            note = f"agent_loop_stopped: {reason or 'interrupted'}"
+            why = reason or "interrupted"
+            if invalidation_reason:
+                why = f"{why} ({invalidation_reason})"
+            note = f"agent_loop_stopped: {why}"
             ledger.set_turn_reason(str(turn["turn_id"]), note)
             ledger.mark_reply(str(turn["turn_id"]), status="stopped")
             from . import receipt

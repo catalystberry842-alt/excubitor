@@ -335,6 +335,28 @@ def find_open_turn_for_session(session_id: str) -> dict[str, Any] | None:
         return None
 
 
+def find_open_turn_for_session_key(session_key: str) -> dict[str, Any] | None:
+    """Most recent open turn whose gateway route key (meta_json.session_key) matches."""
+    if not session_key:
+        return None
+    try:
+        rows = (
+            _conn()
+            .execute("SELECT * FROM turns WHERE status = 'open' ORDER BY opened_at DESC")
+            .fetchall()
+        )
+        for r in rows:
+            try:
+                meta = json.loads(r["meta_json"] or "{}")
+            except Exception:
+                continue
+            if meta.get("session_key") == session_key:
+                return dict(r)
+        return None
+    except Exception:
+        return None
+
+
 def find_open_unbound_turn() -> dict[str, Any] | None:
     """Most recent open turn that has no agent session_id yet (gateway-admitted)."""
     try:
