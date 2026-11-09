@@ -39,12 +39,15 @@ def test_cli_turns_have_independent_history_and_watch(modules):
     assert len(ledger.overdue_open_turns()) == 1
 
 
-def test_concurrent_chats_match_identity_not_newest(modules):
+def test_concurrent_chats_match_identity_not_newest(modules, monkeypatch):
     ledger, s, i = [modules[k] for k in ("ledger", "spend", "intake")]
     for chat in ("A", "B"):
         i.on_post_gateway_admission(event=event(chat=chat), session_key=chat)
-    s.on_pre_llm_call(session_id="sA", session_key="A", turn_id="coreA")
-    s.on_pre_llm_call(session_id="sB", session_key="B", turn_id="coreB")
+    # Hermes exposes the route key via the published session env, not hook kwargs.
+    monkeypatch.setenv("HERMES_SESSION_KEY", "A")
+    s.on_pre_llm_call(session_id="sA", turn_id="coreA")
+    monkeypatch.setenv("HERMES_SESSION_KEY", "B")
+    s.on_pre_llm_call(session_id="sB", turn_id="coreB")
     for chat in ("A", "B"):
         s.on_post_api_request(session_id="s" + chat, turn_id="core" + chat, usage={"cost_usd": 0.2})
         turn = ledger.find_open_turn_for_session("s" + chat)

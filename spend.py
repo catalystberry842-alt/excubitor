@@ -154,9 +154,7 @@ def on_pre_llm_call(
             session_id=session_id or "",
             turn_id=turn_id or "",
             task_id=task_id or "",
-            session_key=kwargs.get("session_key", ""),
             platform=str(platform or ""),
-            chat_id=kwargs.get("chat_id", ""),
             start_new=True,
         )
         turn = ledger.get_turn(tid)

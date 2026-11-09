@@ -23,7 +23,8 @@ def test_receipts_send_once_on_replay_and_repeated_completion(modules, monkeypat
     i.on_pre_gateway_dispatch(event=e)
     i.on_post_gateway_admission(event=e, session_key="A")
     tid = ledger.find_open_unbound_turn()["turn_id"]
-    s.on_pre_llm_call(session_id="s", session_key="A", turn_id="core")
+    monkeypatch.setenv("HERMES_SESSION_KEY", "A")
+    s.on_pre_llm_call(session_id="s", turn_id="core")
     s.on_post_llm_call(session_id="s", turn_id="core")
     for _ in range(5):
         i.on_pre_gateway_dispatch(event=event())
